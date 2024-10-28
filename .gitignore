@@ -1,0 +1,41 @@
+# Ignore build directories
+/build/
+/bin/
+/obj/
+
+# Ignore generated files
+*.o
+*.out
+*.exe
+*.so
+*.dll
+*.dSYM/
+
+# Ignore IDE specific files
+*.swp
+*.swo
+*.user
+*.workspace
+*.project
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore logs
+*.log
+
+# Ignore local configuration files
+*.local
+
+# Ignore dependency directories
+/dependencies/
+/libs/
+
+# Ignore the SDL2 library files if installed in a specific directory
+/path/to/your/sdl2/include/*
+/path/to/your/sdl2/lib/*
+/path/to/your/sdl2/bin/*
+
+# Ignore cache files
+*.cache
