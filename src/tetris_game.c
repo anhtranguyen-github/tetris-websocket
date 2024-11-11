@@ -172,6 +172,8 @@ void handleEvents(int *quit) {
     }
 }
 
+
+
 void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Color white = {255, 255, 255};
     SDL_Surface *surface;
@@ -179,14 +181,18 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Rect rect;
     char buffer[50];
 
+    // Render each leaderboard entry
     for (int i = 0; i < LEADERBOARD_SIZE; i++) {
         snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
         surface = TTF_RenderText_Solid(font, buffer, white);
         texture = SDL_CreateTextureFromSurface(renderer, surface);
-        rect.x = SCREEN_WIDTH + 10;
-        rect.y = 10 + i * 30;
+        
+        // Position leaderboard entries to the right of the game screen
+        rect.x = SCREEN_WIDTH - 300;  // Assuming SCREEN_WIDTH is the width of the game area
+        rect.y = 10 + i * 30;        // Adjust spacing between entries
         rect.w = surface->w;
         rect.h = surface->h;
+
         SDL_FreeSurface(surface);
         SDL_RenderCopy(renderer, texture, NULL, &rect);
         SDL_DestroyTexture(texture);
@@ -195,8 +201,12 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
 
 void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Color colors[] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};
+    
+    // Clear the screen
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
+    
+    // Render the gameplay area
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
             if (Table[i][j]) {
@@ -211,6 +221,18 @@ void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
             }
         }
     }
+
+    // Draw the border around the gameplay area
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White color for the border
+    SDL_Rect gameplayBorder = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+    SDL_RenderDrawRect(renderer, &gameplayBorder);
+
+    // Draw the line to separate gameplay and leaderboard
+    SDL_RenderDrawLine(renderer, SCREEN_WIDTH - 350, 0, SCREEN_WIDTH - 350, SCREEN_HEIGHT);
+
+    // Render the leaderboard
     renderLeaderboard(renderer, font);
+
+    // Present the rendered frame
     SDL_RenderPresent(renderer);
 }
