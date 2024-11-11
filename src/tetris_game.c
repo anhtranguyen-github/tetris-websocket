@@ -1,25 +1,26 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+#include "tetris_game.h"
 
-#define ROWS 20
-#define COLS 15
-#define BLOCK_SIZE 30
-#define SCREEN_WIDTH (COLS * BLOCK_SIZE)
-#define SCREEN_HEIGHT (ROWS * BLOCK_SIZE)
+Shape current;
 
-int Table[ROWS][COLS] = {0};
+int Table[20][15] = {0};
 int score = 0;
 int GameOn = 1;
 int timer = 400;
 int decrease = 1;
 
-typedef struct {
-    int **array;
-    int width, row, col;
-} Shape;
-Shape current;
+LeaderboardEntry leaderboard[LEADERBOARD_SIZE] = {
+    {"Player1", 1000},
+    {"Player2", 800},
+    {"Player3", 600},
+    {"Player4", 400},
+    {"Player5", 200}
+};
 
 const int ShapesArray[7][4][4] = {
     // Different Tetris shapes
@@ -171,7 +172,28 @@ void handleEvents(int *quit) {
     }
 }
 
-void renderGame(SDL_Renderer *renderer) {
+void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
+    SDL_Color white = {255, 255, 255};
+    SDL_Surface *surface;
+    SDL_Texture *texture;
+    SDL_Rect rect;
+    char buffer[50];
+
+    for (int i = 0; i < LEADERBOARD_SIZE; i++) {
+        snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
+        surface = TTF_RenderText_Solid(font, buffer, white);
+        texture = SDL_CreateTextureFromSurface(renderer, surface);
+        rect.x = SCREEN_WIDTH + 10;
+        rect.y = 10 + i * 30;
+        rect.w = surface->w;
+        rect.h = surface->h;
+        SDL_FreeSurface(surface);
+        SDL_RenderCopy(renderer, texture, NULL, &rect);
+        SDL_DestroyTexture(texture);
+    }
+}
+
+void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Color colors[] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -189,37 +211,6 @@ void renderGame(SDL_Renderer *renderer) {
             }
         }
     }
+    renderLeaderboard(renderer, font);
     SDL_RenderPresent(renderer);
-}
-
-int main() {
-    srand(time(NULL));
-    SDL_Init(SDL_INIT_VIDEO);
-
-    // Clear any pending events to reset key states
-    SDL_PumpEvents();
-    SDL_FlushEvent(SDL_KEYDOWN);
-    SDL_FlushEvent(SDL_KEYUP);
-    
-    SDL_Window *window = SDL_CreateWindow("SDL Tetris", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-    newRandomShape();
-    int quit = 0;
-    int lastTime = SDL_GetTicks();
-    while (GameOn && !quit) {
-        int currentTime = SDL_GetTicks();
-        if (currentTime - lastTime > timer) {
-            moveShapeDown();
-            lastTime = currentTime;
-        }
-        handleEvents(&quit);
-        renderGame(renderer);
-    }
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-    freeShape(current);
-    printf("Game Over! Final Score: %d\n", score);
-    return 0;
 }

@@ -2,6 +2,7 @@
 /build/
 /bin/
 /obj/
+/.vscode/
 
 # Ignore generated files
 *.o
