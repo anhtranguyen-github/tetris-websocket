@@ -15,11 +15,11 @@ int timer = 400;
 int decrease = 1;
 
 LeaderboardEntry leaderboard[LEADERBOARD_SIZE] = {
-    {"Player1", 1000},
-    {"Player2", 800},
-    {"Player3", 600},
-    {"Player4", 400},
-    {"Player5", 200}
+    {"Player1", 0},
+    {"Player2", 0},
+    {"Player3", 0},
+    {"Player4", 0},
+    {"Player5", 0}
 };
 
 const int ShapesArray[7][4][4] = {
@@ -121,6 +121,7 @@ void clearLines() {
         }
     }
     score += cleared * 100;
+    updatePlayerScore(score);
 }
 
 void moveShapeDown() {
@@ -235,4 +236,8 @@ void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
 
     // Present the rendered frame
     SDL_RenderPresent(renderer);
+}
+
+void updatePlayerScore(int newScore) {
+    leaderboard[0].score = newScore;
 }

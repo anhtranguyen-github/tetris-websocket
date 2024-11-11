@@ -46,5 +46,6 @@ void rotateShape();
 void handleEvents(int *quit);
 void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font);
 void renderGame(SDL_Renderer *renderer, TTF_Font *font);
+void updatePlayerScore(int newScore);
 
 #endif // TETRIS_GAME_H
