@@ -6,13 +6,14 @@
 #include <string.h>
 #include "tetris_game.h"
 
-Shape current;
+
 
 int Table[20][15] = {0};
 int score = 0;
 int GameOn = 1;
 int timer = 400;
 int decrease = 1;
+
 
 LeaderboardEntry leaderboard[LEADERBOARD_SIZE] = {
     {"Player1", 0},
@@ -33,12 +34,63 @@ const int ShapesArray[7][4][4] = {
     {{0,0,0,0}, {1,1,1,1}, {0,0,0,0}, {0,0,0,0}}     // Long bar shape
 };
 
-void drawBlock(SDL_Renderer *renderer, int x, int y, SDL_Color color) {
-    SDL_Rect rect = {x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE};
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
-    SDL_RenderFillRect(renderer, &rect);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black border
-    SDL_RenderDrawRect(renderer, &rect);
+void initShapeList() {
+    shapeList.count = 0;
+    shapeList.current = -1;
+}
+void generateShapes(int number) {
+    for (int i = 0; i < number; i++) {
+        int index = rand() % 7;
+        Shape newShape = copyShape(ShapesArray[index], 4);
+        if (shapeList.count < MAX_SHAPES) {
+            shapeList.shapes[shapeList.count++] = newShape;
+        } else {
+            freeShape(newShape); // Avoid memory leak if list is full
+        }
+    }
+}
+ShapeList shapeList;
+
+
+Shape current;
+Shape viewNextShape(const ShapeList *shapeList) {
+    if (shapeList->count == 0) {
+        fprintf(stderr, "ShapeList is empty!\n");
+        Shape emptyShape = {NULL, 0, 0, 0};
+        return emptyShape; // Return an empty shape in case of an error
+    }
+
+    // Calculate the index of the next shape
+    int nextIndex = (shapeList->current + 1) % shapeList->count;
+
+    // Return the next shape
+    return shapeList->shapes[nextIndex];
+}
+
+Shape* getNextShape() {
+    if (shapeList.count == 0) {
+        return NULL; // No shapes available
+    }
+    shapeList.current = (shapeList.current + 1) % shapeList.count;
+    return &shapeList.shapes[shapeList.current];
+}
+Shape getNextShape2() {
+    if (shapeList.count == 0) {
+        // Return an empty shape or a default value if no shapes are available
+        return (Shape){0}; // Assuming Shape is a struct, this will return an empty/zero-initialized shape
+    }
+    //printShapeToFile(current, "shape.txt");
+    shapeList.current = (shapeList.current + 1) % shapeList.count;
+    return shapeList.shapes[shapeList.current];
+}
+
+
+void freeShapeList() {
+    for (int i = 0; i < shapeList.count; i++) {
+        freeShape(shapeList.shapes[i]);
+    }
+    shapeList.count = 0;
+    shapeList.current = -1;
 }
 
 Shape copyShape(const int shapeArray[4][4], int width) {
@@ -87,6 +139,16 @@ void newRandomShape() {
     }
 }
 
+void newRandomShape2() {
+    freeShape(current);
+    current = getNextShape2();
+    if (!checkPosition(current)) {
+        GameOn = 0;
+    }
+}
+
+
+
 void mergeShape() {
     for (int i = 0; i < current.width; i++) {
         for (int j = 0; j < current.width; j++) {
@@ -130,7 +192,7 @@ void moveShapeDown() {
         current.row--;
         mergeShape();
         clearLines();
-        newRandomShape();
+        newRandomShape2();
     }
 }
 
@@ -154,6 +216,16 @@ void rotateShape() {
     } else {
         freeShape(temp);     // If rotation is not possible, discard temp
     }
+}
+
+
+
+void drawBlock(SDL_Renderer *renderer, int x, int y, SDL_Color color) {
+    SDL_Rect rect = {x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE};
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
+    SDL_RenderFillRect(renderer, &rect);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black border
+    SDL_RenderDrawRect(renderer, &rect);
 }
 
 
@@ -182,15 +254,24 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Rect rect;
     char buffer[50];
 
-    // Render each leaderboard entry
+    // Render leaderboard entries
     for (int i = 0; i < LEADERBOARD_SIZE; i++) {
         snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
         surface = TTF_RenderText_Solid(font, buffer, white);
+        if (!surface) {
+            printf("Error creating surface for leaderboard text: %s\n", TTF_GetError());
+            continue;
+        }
+
         texture = SDL_CreateTextureFromSurface(renderer, surface);
-        
-        // Position leaderboard entries to the right of the game screen
-        rect.x = SCREEN_WIDTH - 300;  // Assuming SCREEN_WIDTH is the width of the game area
-        rect.y = 10 + i * 30;        // Adjust spacing between entries
+        if (!texture) {
+            printf("Error creating texture for leaderboard text: %s\n", SDL_GetError());
+            SDL_FreeSurface(surface);
+            continue;
+        }
+
+        rect.x = SCREEN_WIDTH - 300;  // Right side of the screen
+        rect.y = 10 + i * 30;         // Vertical spacing
         rect.w = surface->w;
         rect.h = surface->h;
 
@@ -198,7 +279,35 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
         SDL_RenderCopy(renderer, texture, NULL, &rect);
         SDL_DestroyTexture(texture);
     }
+
+    // Render the next shape in the leaderboard area
+    Shape nextShape = viewNextShape(&shapeList);
+
+    if (nextShape.array == NULL) {
+        printf("Warning: nextShape.array is NULL.\n");
+        return;
+    }
+
+    SDL_Color shapeColor = {255, 255, 0}; // Yellow color for the next shape
+    int shapeStartX = SCREEN_WIDTH - 250; // Position to render next shape
+    int shapeStartY = 200;
+
+    for (int i = 0; i < nextShape.width; i++) {
+        for (int j = 0; j < nextShape.width; j++) {
+            if (nextShape.array[i][j]) {
+                int x = shapeStartX + j * BLOCK_SIZE;
+                int y = shapeStartY + i * BLOCK_SIZE;
+
+                if (x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) {
+                    drawBlock(renderer, x / BLOCK_SIZE, y / BLOCK_SIZE, shapeColor);
+                } else {
+                    printf("Warning: Block position out of bounds (x=%d, y=%d)\n", x, y);
+                }
+            }
+        }
+    }
 }
+
 
 void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Color colors[] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};

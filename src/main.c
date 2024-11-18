@@ -11,6 +11,10 @@
 
 
 int main() {
+
+    
+    initShapeList();
+    generateShapes(100);
     srand(time(NULL));
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
@@ -18,7 +22,9 @@ int main() {
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     TTF_Font *font = TTF_OpenFont("../fonts/Roboto-Black.ttf", 24);
 
-    newRandomShape();
+
+    
+    newRandomShape2();
     int quit = 0;
     int lastTime = SDL_GetTicks();
     while (GameOn && !quit) {
