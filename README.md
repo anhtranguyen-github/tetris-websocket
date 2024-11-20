@@ -13,28 +13,37 @@ This project is a Tetris game built using C, SDL2, and WebSocket for real-time m
 
 ```
 .
+├── CMakeLists.txt
+├── README.md
 ├── assets
-│   ├── background.bmp
-│   ├── block.bmp
-│   ├── font.ttf
-│   └── fonts/
+├── build
+├── build_project.sh
 ├── config
 │   └── server_config.h
 ├── design
 │   ├── PvP Sequence.asta
 │   ├── PvP Sequence.asta.lock
 │   └── PvP Sequence.png
-├── logs
 ├── src
-│   ├── client/
-│   ├── db/
+│   ├── client
+│   │   ├── client.c
+│   │   ├── client.h
+│   │   ├── sdl_utils.c
+│   │   ├── sdl_utils.h
+│   │   └── test_client_menu.c
+│   ├── db
+│   │   └── db.c
 │   ├── main.c
-│   ├── protocol/
-│   ├── server/
+│   ├── protocol
+│   │   ├── network.c
+│   │   ├── network.h
+│   │   └── protocol.h
+│   ├── server
+│   │   ├── server
+│   │   ├── server.c
+│   │   └── server.h
 │   ├── tetris_game.c
 │   └── tetris_game.h
-├── CMakeLists.txt
-├── README.md
 
 ```
 
