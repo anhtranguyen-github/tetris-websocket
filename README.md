@@ -16,14 +16,10 @@ This project is a Tetris game built using C, SDL2, and WebSocket for real-time m
 ├── CMakeLists.txt
 ├── README.md
 ├── assets
-├── build
 ├── build_project.sh
 ├── config
 │   └── server_config.h
-├── design
-│   ├── PvP Sequence.asta
-│   ├── PvP Sequence.asta.lock
-│   └── PvP Sequence.png
+├── design  
 ├── src
 │   ├── client
 │   │   ├── client.c
