@@ -14,6 +14,7 @@ fi
 # Navigate into the build directory
 cd build
 
+
 # Run CMake to configure the project
 echo "Running CMake configuration..."
 cmake ..
@@ -21,6 +22,15 @@ cmake ..
 # Build the project
 echo "Building the project..."
 make
+
+echo "Building server..."
+make server
+
+echo "Building test_client_menu..."
+make test_client_menu
+
+echo "Building tetris_offline..."
+make tetris_offline
 
 echo "Build process completed."
 
