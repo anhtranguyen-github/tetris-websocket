@@ -64,7 +64,7 @@ git clone https://github.com/your-username/tetris-websocket.git
 cd tetris-websocket
 ```
 
-### 2. Install Dependencies
+### 2. Install Dependencies (NEED TO CHECK !!!)
 
 Ensure that you have SDL2, SDL2_ttf, and pthread installed. On Ubuntu, you can install them using the following commands:
 
@@ -77,24 +77,41 @@ sudo apt-get install libsdl2-dev libsdl2-ttf-dev libpthread-stubs0-dev
 
 To build the project, follow these steps:
 
-1. Create a build directory:
+1. **Run the build script**:
+
+   To automate the process of creating the build directory, configuring the project, and building it, simply run the `build_project.sh` script:
 
    ```bash
-   mkdir build
-   cd build
+   ./build_project.sh
    ```
 
-2. Run CMake to configure the project:
+   This will:
+   - Create the `build` directory if it doesn't exist.
+   - Run `cmake` to configure the project.
+   - Build the project using `make`.
 
-   ```bash
-   cmake ..
-   ```
+2. **Alternatively, manually build the project**:
 
-3. Build the project using `make`:
+   If you prefer to manually set up the build environment, follow these steps:
 
-   ```bash
-   make
-   ```
+   - Create a build directory:
+
+     ```bash
+     mkdir build
+     cd build
+     ```
+
+   - Run CMake to configure the project:
+
+     ```bash
+     cmake ..
+     ```
+
+   - Build the project using `make`:
+
+     ```bash
+     make
+     ```
 
 ### 4. Build Specific Targets
 
@@ -119,7 +136,7 @@ To run the server and client, use the following commands:
 1. **Start the server**:
 
    ```bash
-    ./bin/server 
+   ./bin/server 
    ```
 
 2. **Start the client**:
@@ -127,6 +144,7 @@ To run the server and client, use the following commands:
    ```bash
    ./bin/test_client_menu 
    ```
+
 
 ## Usage
 
