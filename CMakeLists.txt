@@ -8,32 +8,38 @@ project(TetrisGame VERSION 1.0)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED True)
 
-# Add the executable
-add_executable(tetris
-    src/main.c
-    src/tetris_game.c
-    src/websocket_server.c
-    src/client_handler.c
-    src/utils.c
-)
+# Set the directories for sources and includes
+set(SRC_DIR src)
+set(PROTOCOL_DIR ${SRC_DIR}/protocol)
+set(INCLUDE_DIR ${SRC_DIR}/include)
 
-# Include directories
-target_include_directories(tetris PRIVATE src config)
+# Add the executable for the server
+add_executable(server ${SRC_DIR}/server/server.c ${PROTOCOL_DIR}/protocol.h)
+target_include_directories(server PRIVATE ${PROTOCOL_DIR})
+target_link_libraries(server PRIVATE pthread)
 
-# Find SDL2 library
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
-target_link_libraries(tetris ${SDL2_LIBRARIES})
+# Add the executable for the test client menu
+add_executable(test_client_menu ${SRC_DIR}/client/test_client_menu.c ${PROTOCOL_DIR}/protocol.h)
+target_include_directories(test_client_menu PRIVATE ${PROTOCOL_DIR})
+target_link_libraries(test_client_menu PRIVATE pthread)
 
-# Find SDL2_ttf library using pkg-config
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
-include_directories(${SDL2_TTF_INCLUDE_DIRS})
-target_link_libraries(tetris ${SDL2_TTF_LIBRARIES})
+# Add the executable for the Tetris offline game
+add_executable(tetris_offline ${SRC_DIR}/main.c ${SRC_DIR}/tetris_game.c)
+target_include_directories(tetris_offline PRIVATE ${SRC_DIR} ${INCLUDE_DIR})
+target_link_libraries(tetris_offline PRIVATE pthread SDL2 SDL2_ttf)
 
-# Link the ncurses library for terminal handling
-target_link_libraries(tetris ncurses)
+# Link ncurses library (if needed)
+target_link_libraries(tetris_offline PRIVATE ncurses)
 
-# Optional: Link additional libraries if needed (e.g., pthreads for multithreading)
-# find_package(Threads REQUIRED)
-# target_link_libraries(tetris PRIVATE Threads::Threads)
+# Set output directories for executables
+set_target_properties(server PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set_target_properties(test_client_menu PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set_target_properties(tetris_offline PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+# Optional: Add debugging flags for easier development
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(tetris_offline PRIVATE DEBUG)
+endif()
+
+# Add custom compile options or flags if necessary
+# target_compile_options(tetris_offline PRIVATE -D CUSTOM_DEFINE=1)

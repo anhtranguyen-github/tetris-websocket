@@ -1,5 +1,148 @@
-# tetris-websocket
 
-## Used MakeC to build the project
-- Install SDL2
-- Install SDL2_ttf
+# Tetris Game with WebSocket and Multithreading
+
+This project is a Tetris game built using C, SDL2, and WebSocket for real-time multiplayer functionality. It includes support for SDL2 graphics, multithreading with `pthread`, and a client-server architecture where players can connect and compete against each other.
+
+## Features
+- **Tetris Gameplay**: A fully functional Tetris game with the classic gameplay mechanics.
+- **Multithreading**: Server and client support multithreading for concurrent handling of user actions and game state updates.
+- **WebSocket Server**: A WebSocket-based server to facilitate communication between multiple players in real-time.
+- **SDL2**: Graphics and UI for the game using SDL2, including support for custom fonts and backgrounds.
+
+## Project Structure
+
+```
+.
+├── assets
+│   ├── background.bmp
+│   ├── block.bmp
+│   ├── font.ttf
+│   └── fonts/
+├── config
+│   └── server_config.h
+├── design
+│   ├── PvP Sequence.asta
+│   ├── PvP Sequence.asta.lock
+│   └── PvP Sequence.png
+├── logs
+├── src
+│   ├── client/
+│   ├── db/
+│   ├── main.c
+│   ├── protocol/
+│   ├── server/
+│   ├── tetris_game.c
+│   └── tetris_game.h
+├── CMakeLists.txt
+├── README.md
+
+```
+
+- `assets/` contains images and fonts used for the game's UI.
+- `config/` contains configuration files.
+- `src/` contains all the source files for the client, server, game logic, and protocol handling.
+- `CMakeLists.txt` is the build configuration file for CMake.
+- `README.md` is this file.
+
+## Requirements
+
+- **C Compiler**: GCC or any compatible C compiler.
+- **CMake**: Version 3.10 or later for building the project.
+- **SDL2**: SDL2 graphics library for rendering.
+- **SDL2_ttf**: SDL2 extension for working with TrueType fonts.
+- **pthread**: For multithreading support.
+- **pkg-config**: For handling library dependencies.
+
+## Building the Project
+
+### 1. Clone the Repository
+
+First, clone the repository to your local machine:
+
+```bash
+git clone https://github.com/your-username/tetris-websocket.git
+cd tetris-websocket
+```
+
+### 2. Install Dependencies
+
+Ensure that you have SDL2, SDL2_ttf, and pthread installed. On Ubuntu, you can install them using the following commands:
+
+```bash
+sudo apt-get update
+sudo apt-get install libsdl2-dev libsdl2-ttf-dev libpthread-stubs0-dev
+```
+
+### 3. Build the Project with CMake
+
+To build the project, follow these steps:
+
+1. Create a build directory:
+
+   ```bash
+   mkdir build
+   cd build
+   ```
+
+2. Run CMake to configure the project:
+
+   ```bash
+   cmake ..
+   ```
+
+3. Build the project using `make`:
+
+   ```bash
+   make
+   ```
+
+### 4. Build Specific Targets
+
+You can build the specific components of the project (server, test client, and Tetris offline game) by running:
+
+```bash
+make server
+make test_client_menu
+make tetris_offline
+```
+
+### 5. Run the Game
+
+Once the project is successfully built, you can run the Tetris game with the following command:
+
+```bash
+./tetris_offline
+```
+
+To run the server and client, use the following commands:
+
+1. **Start the server**:
+
+   ```bash
+   ./server
+   ```
+
+2. **Start the client**:
+
+   ```bash
+   ./test_client_menu
+   ```
+
+## Usage
+
+- The **server** manages the game state and handles communication between multiple clients.
+- The **client** connects to the server, allowing a player to interact with the game.
+
+### Client-Server Communication
+
+- The game uses WebSocket for real-time communication between the client and server.
+- The server uses multithreading to handle multiple client connections simultaneously.
+
+## Customization
+
+- **Fonts**: The game uses custom fonts from the `assets/fonts` folder.
+- **Server Configuration**: Adjust server parameters in the `config/server_config.h` file.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

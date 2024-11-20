@@ -1,0 +1,5 @@
+/mnt/c/Users/tra01/OneDrive/Desktop/VSC/tetris/tetris-websocket/CMakeFiles/server.dir
+/mnt/c/Users/tra01/OneDrive/Desktop/VSC/tetris/tetris-websocket/CMakeFiles/test_client_menu.dir
+/mnt/c/Users/tra01/OneDrive/Desktop/VSC/tetris/tetris-websocket/CMakeFiles/tetris_offline.dir
+/mnt/c/Users/tra01/OneDrive/Desktop/VSC/tetris/tetris-websocket/CMakeFiles/edit_cache.dir
+/mnt/c/Users/tra01/OneDrive/Desktop/VSC/tetris/tetris-websocket/CMakeFiles/rebuild_cache.dir

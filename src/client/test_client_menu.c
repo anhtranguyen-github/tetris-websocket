@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "network.h"
-#include "protocol.h"
+#include "../protocol/network.c"
+#include "../protocol/protocol.h"
 
 // Function to display the menu
 void print_menu() {
