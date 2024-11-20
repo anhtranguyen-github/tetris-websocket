@@ -148,6 +148,25 @@ void newRandomShape2() {
 }
 
 
+void printTableToFile(const char *filename) {
+    FILE *file = fopen(filename, "w");  // Open the file in write mode
+    if (file == NULL) {
+        printf("Error opening file for writing: %s\n", filename);
+        return;
+    }
+
+    // Iterate through the Table and write its contents
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            fprintf(file, "%d ", Table[i][j]);  // Write each element followed by a space
+        }
+        fprintf(file, "\n");  // New line after each row
+    }
+
+    fclose(file);  // Close the file after writing
+    printf("Table successfully written to %s\n", filename);
+}
+
 
 void mergeShape() {
     for (int i = 0; i < current.width; i++) {
@@ -157,6 +176,7 @@ void mergeShape() {
             }
         }
     }
+    printTableToFile("table.txt");
 }
 
 void clearLines() {
