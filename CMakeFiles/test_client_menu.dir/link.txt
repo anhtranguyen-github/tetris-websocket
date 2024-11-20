@@ -1,1 +1,0 @@
-/usr/bin/cc CMakeFiles/test_client_menu.dir/src/client/test_client_menu.c.o -o bin/test_client_menu  -lpthread 

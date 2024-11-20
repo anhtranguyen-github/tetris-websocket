@@ -1,1 +1,0 @@
-/usr/bin/cc CMakeFiles/tetris_offline.dir/src/main.c.o CMakeFiles/tetris_offline.dir/src/tetris_game.c.o -o bin/tetris_offline  -lpthread -lSDL2 -lSDL2_ttf -lncurses 
