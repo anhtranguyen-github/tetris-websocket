@@ -94,6 +94,7 @@ To build the project, follow these steps:
    - Create the `build` directory if it doesn't exist.
    - Run `cmake` to configure the project.
    - Build the project using `make`.
+   - Build server, test_client_menu, tetris_offline in build/bin.
 
 2. **Alternatively, manually build the project**:
 
