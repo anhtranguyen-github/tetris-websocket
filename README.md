@@ -119,13 +119,13 @@ To run the server and client, use the following commands:
 1. **Start the server**:
 
    ```bash
-   ./server
+    ./bin/server 
    ```
 
 2. **Start the client**:
 
    ```bash
-   ./test_client_menu
+   ./bin/test_client_menu 
    ```
 
 ## Usage
