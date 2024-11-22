@@ -244,9 +244,21 @@ int main() {
 
     create_tables(conn);
 
+    // Adding multiple users
     insert_user(conn, "player1", "hashed_password1");
+    insert_user(conn, "player2", "hashed_password2");
+    insert_user(conn, "player3", "hashed_password3");
+    insert_user(conn, "player4", "hashed_password4");
+    insert_user(conn, "player5", "hashed_password5");
+
+    // Fetch all users to verify
     fetch_users(conn);
+
+    // Create multiple rooms
     create_room(conn, "Room1", 1, 60, 150, 4);
+    create_room(conn, "Room2", 2, 45, 100, 6);
+    create_room(conn, "Room3", 3, 30, 200, 5);
+    create_room(conn, "Room4", 4, 90, 300, 3);
 
     // Create a game and update its status
     create_game(conn, 1);
