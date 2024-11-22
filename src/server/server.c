@@ -114,19 +114,31 @@ Message handle_login(const Message *msg, PGconn* conn) {
 
 
 // Handle creating a new room
-bool handleCreateRoom(PGconn* conn, const char* sessionID, const char* roomName) {
+Message handle_create_room(Message* msg, PGconn* conn) {
+    Message response;
+    write_to_log("1");
     const char* query = "INSERT INTO rooms (room_name, host_id) "
                         "VALUES ($1, (SELECT username FROM sessions WHERE session_id = $2));";
-    const char* paramValues[2] = { roomName, sessionID };
+    const char* paramValues[2] = { msg->room_name, msg->data };  // sessionID is passed as msg->data
 
     PGresult* res = PQexecParams(conn, query, 2, NULL, paramValues, NULL, NULL, 0);
+    write_to_log("2");
     bool success = (PQresultStatus(res) == PGRES_COMMAND_OK);
-    if (!success) {
-        fprintf(stderr, "Failed to create room: %s\n", PQerrorMessage(conn));
-    }
+    
     PQclear(res);
-    return success;
+    write_to_log("3");
+    // Set the response data and type based on success or failure
+    if (success) {
+        strcpy(response.data, "Room created successfully!");
+        response.type = JOIN_ROOM_SUCCESS;  // Success type
+    } else {
+        strcpy(response.data, "Failed to create room.");
+        response.type = JOIN_ROOM_FAILURE;  // Failure type
+    }
+
+    return response;  // Return the Message struct with appropriate response
 }
+
 
 // Handle joining an existing room
 bool handleJoinRoom(PGconn* conn, const char* sessionID, const char* roomID) {
@@ -161,15 +173,9 @@ void handleClientRequest(int clientSocket, PGconn* conn) {
             case LOGIN:
                 response = handle_login(&msg, conn);  // Handle login and generate session (cookie)
                 break;
-
             case CREATE_ROOM:
-                if (handleCreateRoom(conn, msg.data, msg.room_name)) {
-                    strcpy(response.data, "Room created successfully!");
-                    response.type = ROOM_LIST;
-                } else {
-                    strcpy(response.data, "Failed to create room.");
-                    response.type = ROOM_NOT_FOUND; // Adjust type if you want a specific failure type
-                }
+                // Call handle_create_room and get the response message
+                response = handle_create_room(&msg, conn);
                 break;
 
             case JOIN_ROOM:
