@@ -9,9 +9,10 @@
 #include "../protocol/network.c"
 #include "../protocol/protocol.h"
 #include "../ultis.h"  
-// Global variables
-int server_fd;
+#include <uuid/uuid.h>  
 
+int server_fd;
+void generateSessionID(char *sessionID);  
 // Signal handler to clean up and close the server socket
 void handle_signal(int sig) {
     printf("\nReceived signal %d, shutting down...\n", sig);
@@ -52,11 +53,26 @@ bool validateLogin(PGconn* conn, const char* username, const char* password) {
 
 // Create a new session with an expiration time
 bool createSession(PGconn* conn, const char* username, char* sessionID, int expirationMinutes) {
+    // Check if the session ID already exists in the database
+    const char* checkQuery = "SELECT 1 FROM sessions WHERE session_id = $1;";
+    const char* checkParams[1] = { sessionID };
+    PGresult* checkRes = PQexecParams(conn, checkQuery, 1, NULL, checkParams, NULL, NULL, 0);
+
+    if (PQntuples(checkRes) > 0) {
+        // Session ID already exists, generate a new one and try again
+        PQclear(checkRes);
+        generateSessionID(sessionID);
+        return createSession(conn, username, sessionID, expirationMinutes);  // Try again with the new session ID
+    }
+
+    PQclear(checkRes);
+
+    // Proceed with inserting the new session
     const char* query = "INSERT INTO sessions (session_id, username, expiration) VALUES ($1, $2, NOW() + INTERVAL '1 minute' * $3)";
     char expirationStr[12]; // Buffer to hold string representation of the integer
     snprintf(expirationStr, sizeof(expirationStr), "%d", expirationMinutes); // Convert integer to string
 
-    const char* paramValues[3] = { sessionID, username, expirationStr }; // Correctly use expirationStr
+    const char* paramValues[3] = { sessionID, username, expirationStr };
     PGresult* res = PQexecParams(conn, query, 3, NULL, paramValues, NULL, NULL, 0);
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -69,6 +85,7 @@ bool createSession(PGconn* conn, const char* username, char* sessionID, int expi
     return true;
 }
 
+
 // Validate if a session ID is active and not expired
 bool validateSession(PGconn* conn, const char* sessionID) {
     const char* query = "SELECT 1 FROM sessions WHERE session_id = $1 AND expiration > NOW();";
@@ -79,10 +96,13 @@ bool validateSession(PGconn* conn, const char* sessionID) {
     PQclear(res);
     return valid;
 }
+
 void generateSessionID(char *sessionID) {
-    // For simplicity, let's generate a random session ID (you can use UUID or any other method)
-    sprintf(sessionID, "%d", rand());
+    uuid_t uuid;
+    uuid_generate(uuid);  // Generate a UUID
+    uuid_unparse(uuid, sessionID);  // Convert the UUID to a string
 }
+
 Message handle_login(const Message *msg, PGconn* conn) {
     Message response;
     response.type = LOGIN_FAILURE;  // Default to failure
