@@ -4,7 +4,7 @@
 
 PGconn *connect_db() {
     // Use the default "postgres" database to connect to the server
-    const char *conninfo = "host=localhost dbname=postgres user=new_user password='your_password'";
+    const char *conninfo = "dbname=postgres user=new_user password=1 host=localhost";
     
     // Step 1: Connect to PostgreSQL using the "postgres" database
     PGconn *conn = PQconnectdb(conninfo);
@@ -46,7 +46,7 @@ PGconn *connect_db() {
 
     // Step 3: Now connect to the 'tetris' database
     PQclear(res);
-    const char *final_conninfo = "host=localhost dbname=tetris user=new_user password='your_password'";
+    const char *final_conninfo = "dbname=tetris user=new_user password=1 host=localhost";
     PGconn *tetris_conn = PQconnectdb(final_conninfo);
 
     if (PQstatus(tetris_conn) != CONNECTION_OK) {
@@ -60,6 +60,7 @@ PGconn *connect_db() {
     PQfinish(conn);  // Close the initial connection since we don't need it anymore
     return tetris_conn;
 }
+
 
 void execute_query(PGconn *conn, const char *query) {
     PGresult *res = PQexec(conn, query);
@@ -116,11 +117,19 @@ void create_tables(PGconn *conn) {
         "score INT NOT NULL DEFAULT 0,"
         "PRIMARY KEY (game_id, user_id));";
 
+
+    const char *create_sessions = 
+        "CREATE TABLE IF NOT EXISTS sessions ("
+        "session_id VARCHAR(255) PRIMARY KEY,"
+        "username VARCHAR(50) NOT NULL REFERENCES users(username) ON DELETE CASCADE,"
+        "expiration TIMESTAMP NOT NULL);";
+
     execute_query(conn, create_users);
     execute_query(conn, create_rooms);
     execute_query(conn, create_room_players);
     execute_query(conn, create_games);
     execute_query(conn, create_game_scores);
+    execute_query(conn, create_sessions);
 }
 
 

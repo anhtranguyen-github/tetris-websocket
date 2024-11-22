@@ -18,17 +18,28 @@ void print_menu() {
 
 // Function to handle login
 void login(int client_fd) {
-    char username[MAX_USERNAME];
+    char username[MAX_USERNAME], password[MAX_USERNAME];
     printf("Enter username: ");
     scanf("%s", username);
+    printf("Enter password: ");
+    scanf("%s", password);
 
-    Message msg = {LOGIN, "", "", "Requesting login"};
+    Message msg = {LOGIN, "", "", ""};
     strncpy(msg.username, username, MAX_USERNAME);
+    strncpy(msg.data, password, BUFFER_SIZE);
 
     send(client_fd, &msg, sizeof(Message), 0);
+
     Message response;
     recv(client_fd, &response, sizeof(Message), 0);
-    printf("Client received LOGIN response:\n  Type: %d\n  Data: %s\n", response.type, response.data);
+
+    if (response.type == LOGIN_SUCCESS) {
+        printf("Login successful! Welcome, %s.\n", username);
+    } else if (response.type == LOGIN_FAILURE) {
+        printf("Login failed! Please try again.\n");
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
 }
 
 // Function to handle room creation
@@ -37,13 +48,21 @@ void create_room(int client_fd) {
     printf("Enter room name: ");
     scanf("%s", room_name);
 
-    Message msg = {CREATE_ROOM, "test_user", "", "Creating room"};
+    Message msg = {CREATE_ROOM, "", "", ""};
     strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
 
     send(client_fd, &msg, sizeof(Message), 0);
+
     Message response;
     recv(client_fd, &response, sizeof(Message), 0);
-    printf("Client received CREATE_ROOM response:\n  Type: %d\n  Data: %s\n", response.type, response.data);
+
+    if (response.type == ROOM_LIST) {
+        printf("Room created successfully: %s\n", response.data);
+    } else if (response.type == ROOM_NOT_FOUND) {
+        printf("Failed to create room: %s\n", response.data);
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
 }
 
 // Function to handle room joining
@@ -52,24 +71,39 @@ void join_room(int client_fd) {
     printf("Enter room name to join: ");
     scanf("%s", room_name);
 
-    Message msg = {JOIN_ROOM, "test_user", "", "Joining room"};
+    Message msg = {JOIN_ROOM, "", "", ""};
     strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
 
     send(client_fd, &msg, sizeof(Message), 0);
+
     Message response;
     recv(client_fd, &response, sizeof(Message), 0);
-    printf("Client received JOIN_ROOM response:\n  Type: %d\n  Data: %s\n", response.type, response.data);
+
+    if (response.type == ROOM_JOINED) {
+        printf("Successfully joined room: %s\n", room_name);
+    } else if (response.type == ROOM_NOT_FOUND) {
+        printf("Failed to join room: %s\n", response.data);
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
 }
 
 // Function to handle disconnection
 void disconnect(int client_fd) {
-    Message msg = {DISCONNECT, "test_user", "", "Disconnecting"};
+    Message msg = {DISCONNECT, "", "", "Disconnecting"};
     send(client_fd, &msg, sizeof(Message), 0);
+
     Message response;
     recv(client_fd, &response, sizeof(Message), 0);
-    printf("Client received DISCONNECT response:\n  Type: %d\n  Data: %s\n", response.type, response.data);
+
+    if (response.type == DISCONNECT) {
+        printf("Disconnected successfully.\n");
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
 }
 
+// Main client function
 void client_function(const char *server_ip) {
     int client_fd = create_client_socket(server_ip);
     if (client_fd < 0) {
@@ -107,7 +141,7 @@ void client_function(const char *server_ip) {
 }
 
 int main() {
-    const char *server_ip = "127.0.0.1";  // Change to your server IP address
+    const char *server_ip = "127.0.0.1";  // Change to your server's IP address
     client_function(server_ip);
     return 0;
 }
