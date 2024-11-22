@@ -45,23 +45,38 @@ void login(int client_fd) {
 // Function to handle room creation
 void create_room(int client_fd) {
     char room_name[MAX_ROOM_NAME];
+    char session_id[MAX_SESSION_ID];  // Store session ID here
+
+    // Get the room name and session ID from the user
     printf("Enter room name: ");
-    scanf("%s", room_name);
+    scanf("%s", room_name);  // Get room name input from the user
+    printf("Enter session ID: ");
+    scanf("%s", session_id);  // Get session ID input from the user (this should be passed by the client)
 
+    // Prepare the message to send to the server
     Message msg = {CREATE_ROOM, "", "", ""};
-    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
+    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);  // Set room name in the message
+    strncpy(msg.data, session_id, MAX_SESSION_ID);     // Set session ID (as msg.data)
 
+    // Send the message to the server
     send(client_fd, &msg, sizeof(Message), 0);
 
+    // Receive the server's response
     Message response;
-    recv(client_fd, &response, sizeof(Message), 0);
+    int bytes_received = recv(client_fd, &response, sizeof(Message), 0);
 
-    if (response.type == ROOM_LIST) {
-        printf("Room created successfully: %s\n", response.data);
-    } else if (response.type == ROOM_NOT_FOUND) {
-        printf("Failed to create room: %s\n", response.data);
+    if (bytes_received <= 0) {
+        printf("Error receiving response from server.\n");
+        return;
+    }
+
+    // Handle the server's response based on the response type
+    if (response.type == JOIN_ROOM_SUCCESS) {
+        printf("Room created successfully: %s\n", response.data);  // Success response
+    } else if (response.type == JOIN_ROOM_FAILURE) {
+        printf("Failed to create room: %s\n", response.data);  // Failure response
     } else {
-        printf("Unexpected response type: %d\n", response.type);
+        printf("Unexpected response type: %d\n", response.type);  // Unexpected response
     }
 }
 
