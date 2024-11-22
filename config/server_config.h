@@ -7,5 +7,5 @@
 #define MESSAGE_BUFFER_SIZE 1024
 #define PING_INTERVAL 15
 #define ENABLE_LOGGING 1
-
+#define MAX_SESSION_ID 20
 #endif
