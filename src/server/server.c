@@ -8,6 +8,7 @@
 #include <libpq-fe.h>
 #include "../protocol/network.c"
 #include "../protocol/protocol.h"
+#include "../../config/client_config.h"
 #include "../ultis.h"  
 #include <uuid/uuid.h>  
 
@@ -145,19 +146,55 @@ Message handle_create_room(Message* msg, PGconn* conn) {
     // Log incoming message details
     write_to_log("handle_create_room: Received message");
     write_to_log(msg->room_name); // Assuming `room_name` is null-terminated
-    write_to_log(msg->data);      // Assuming `data` (session ID) is null-terminated
+    write_to_log(msg->data);      // Assuming `data` contains session ID and room settings (time_limit, brick_limit, max_player)
 
-    // Define the SQL query to insert a new room, using the user_id for host_id
-    const char* query = "INSERT INTO rooms (room_name, host_id) "
-                        "VALUES ($1, (SELECT user_id FROM users WHERE username = (SELECT username FROM sessions WHERE session_id = $2)));";
-    const char* paramValues[2] = { msg->room_name, msg->data };  // sessionID is passed as msg->data
+    // Parse the data from msg->data (session ID | time_limit | brick_limit | max_player)
+    char session_id[MAX_SESSION_ID];
+    int time_limit, brick_limit, max_player;
+    int parsed = sscanf(msg->data, "%[^|]|%d|%d|%d", session_id, &time_limit, &brick_limit, &max_player);
+
+    // Log the parsed values
+    write_to_log("Parsed session_id: ");
+    write_to_log(session_id);
+    write_to_log("Parsed time_limit: ");
+    write_to_log_int(time_limit);
+    write_to_log("Parsed brick_limit: ");
+    write_to_log_int(brick_limit);
+    write_to_log("Parsed max_player: ");
+    write_to_log_int(max_player);
+
+    // Check if parsing was successful
+    if (parsed != 4) {
+        write_to_log("handle_create_room: Error parsing msg->data. Expected 4 fields but got fewer.");
+        // Set default values if parsing fails
+        time_limit = DEFAULT_TIME_LIMIT;
+        brick_limit = DEFAULT_BRICK_LIMIT;
+        max_player = DEFAULT_MAX_PLAYER;
+    }
+
+    // Convert the integers to strings for SQL query
+    char time_limit_str[64], brick_limit_str[64], max_player_str[64];
+    snprintf(time_limit_str, sizeof(time_limit_str), "%d", time_limit);
+    snprintf(brick_limit_str, sizeof(brick_limit_str), "%d", brick_limit);
+    snprintf(max_player_str, sizeof(max_player_str), "%d", max_player);
+
+    // Log the converted values
+    write_to_log("handle_create_room: Converted parameters to strings:");
+    write_to_log(time_limit_str);
+    write_to_log(brick_limit_str);
+    write_to_log(max_player_str);
+
+    // Define the SQL query to insert a new room, including the new parameters
+    const char* query = "INSERT INTO rooms (room_name, host_id, time_limit, brick_limit, max_players) "
+                        "VALUES ($1, (SELECT user_id FROM users WHERE username = (SELECT username FROM sessions WHERE session_id = $2)), $3, $4, $5);";
+    const char* paramValues[5] = { msg->room_name, session_id, time_limit_str, brick_limit_str, max_player_str };  // Session ID, time_limit, brick_limit, max_players
 
     // Log the preparation for query execution
     write_to_log("handle_create_room: Preparing to execute query");
 
     // Execute the query with parameters
-    PGresult* res = PQexecParams(conn, query, 2, NULL, paramValues, NULL, NULL, 0);
-    
+    PGresult* res = PQexecParams(conn, query, 5, NULL, paramValues, NULL, NULL, 0);
+
     // Check if the query execution returned NULL (failure)
     if (res == NULL) {
         write_to_log("handle_create_room: PQexecParams returned NULL");
@@ -201,6 +238,8 @@ Message handle_create_room(Message* msg, PGconn* conn) {
     // Return the Message struct with the appropriate response
     return response;
 }
+
+
 // Handle joining an existing room
 bool handleJoinRoom(PGconn* conn, const char* sessionID, const char* roomID) {
     const char* query = "INSERT INTO room_participants (room_id, user_id) "
