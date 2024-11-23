@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include "../protocol/network.c"
 #include "../protocol/protocol.h"
-
+#include "../config/client_config.h"
 // Function to display the menu
 void print_menu() {
     printf("\nClient Menu:\n");
@@ -47,6 +47,9 @@ void create_room(int client_fd) {
     char room_name[MAX_ROOM_NAME];
     char session_id[MAX_SESSION_ID];
     char username[MAX_USERNAME];   // Store session ID here
+    int time_limit = DEFAULT_TIME_LIMIT;
+    int brick_limit = DEFAULT_BRICK_LIMIT;
+    int max_player = DEFAULT_MAX_PLAYER;
 
     printf("Enter username: ");
     scanf("%s", username); 
