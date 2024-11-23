@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include "../protocol/network.c"
 #include "../protocol/protocol.h"
-#include "../config/client_config.h"
+#include "../../config/client_config.h"
 // Function to display the menu
 void print_menu() {
     printf("\nClient Menu:\n");
@@ -42,27 +42,40 @@ void login(int client_fd) {
     }
 }
 
-// Function to handle room creation
+
 void create_room(int client_fd) {
     char room_name[MAX_ROOM_NAME];
     char session_id[MAX_SESSION_ID];
-    char username[MAX_USERNAME];   // Store session ID here
+    char username[MAX_USERNAME];
     int time_limit = DEFAULT_TIME_LIMIT;
     int brick_limit = DEFAULT_BRICK_LIMIT;
     int max_player = DEFAULT_MAX_PLAYER;
 
     printf("Enter username: ");
-    scanf("%s", username); 
+    scanf("%s", username);
     printf("Enter room name: ");
-    scanf("%s", room_name);  // Get room name input from the user
+    scanf("%s", room_name);
     printf("Enter session ID: ");
-    scanf("%s", session_id);  // Get session ID input from the user (this should be passed by the client)
+    scanf("%s", session_id);
+    printf("Enter time limit (-1 for unlimited): ");
+    scanf("%d", &time_limit);
+    printf("Enter brick limit (-1 for unlimited): ");
+    scanf("%d", &brick_limit);
+    printf("Enter max player: ");
+    scanf("%d", &max_player);
+
+    Message msg = {CREATE_ROOM, "", "", ""};
+    // Format the additional data into msg.data as a delimited string
+    snprintf(
+        msg.data, sizeof(msg.data),
+        "%s|%d|%d|%d", 
+        session_id, time_limit, brick_limit, max_player
+    );
 
     // Prepare the message to send to the server
-    Message msg = {CREATE_ROOM, "", "", ""};
-    strncpy(msg.username, username, MAX_USERNAME); 
-    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);  // Set room name in the message
-    strncpy(msg.data, session_id, MAX_SESSION_ID);     // Set session ID (as msg.data)
+    
+    strncpy(msg.username, username, MAX_USERNAME);
+    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
 
     // Send the message to the server
     send(client_fd, &msg, sizeof(Message), 0);
@@ -76,15 +89,16 @@ void create_room(int client_fd) {
         return;
     }
 
-    // Handle the server's response based on the response type
+    // Handle the server's response
     if (response.type == CREATE_ROOM_SUCCESS) {
-        printf("Room created successfully: %s\n", response.data);  // Success response
+        printf("Room created successfully: %s\n", response.data);
     } else if (response.type == CREATE_ROOM_FAILURE) {
-        printf("Failed to create room: %s\n", response.data);  // Failure response
+        printf("Failed to create room: %s\n", response.data);
     } else {
-        printf("Unexpected response type: %d\n", response.type);  // Unexpected response
+        printf("Unexpected response type: %d\n", response.type);
     }
 }
+
 
 // Function to handle room joining
 void join_room(int client_fd) {
