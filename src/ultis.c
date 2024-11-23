@@ -26,3 +26,9 @@ void write_to_log(const char *message) {
     // Close the file
     fclose(file);
 }
+
+void write_to_log_int(int value) {
+    char buffer[64];
+    snprintf(buffer, sizeof(buffer), "%d", value);
+    write_to_log(buffer); 
+}
