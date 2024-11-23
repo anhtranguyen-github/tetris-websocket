@@ -6,7 +6,7 @@ This project is a Tetris game built using C, SDL2, and WebSocket for real-time m
 ## Features
 - **Tetris Gameplay**: A fully functional Tetris game with the classic gameplay mechanics.
 - **Multithreading**: Server and client support multithreading for concurrent handling of user actions and game state updates.
-- **WebSocket Server**: A WebSocket-based server to facilitate communication between multiple players in real-time.
+- **WebSocket Server**: A WebSocket-based server to facilitate communication between multiple players in real time.
 - **SDL2**: Graphics and UI for the game using SDL2, including support for custom fonts and backgrounds.
 
 ## Project Structure
@@ -18,36 +18,31 @@ This project is a Tetris game built using C, SDL2, and WebSocket for real-time m
 ├── assets
 ├── build_project.sh
 ├── config
+│   ├── client_config.h
 │   └── server_config.h
-├── design  
-├── src
-│   ├── client
-│   │   ├── client.c
-│   │   ├── client.h
-│   │   ├── sdl_utils.c
-│   │   ├── sdl_utils.h
-│   │   └── test_client_menu.c
-│   ├── db
-│   │   └── db.c  #WORKING (Cmake currently don't support)
-│   ├── main.c
-│   ├── protocol
-│   │   ├── network.c
-│   │   ├── network.h
-│   │   └── protocol.h
-│   ├── server
-│   │   ├── server
-│   │   ├── server.c
-│   │   └── server.h
-│   ├── tetris_game.c
-│   └── tetris_game.h
-
+├── design
+└── src
+    ├── client
+    │   ├── client.c
+    │   ├── client.h
+    │   ├── sdl_utils.c
+    │   ├── sdl_utils.h
+    │   └── test_client_menu.c
+    ├── db
+    │   └── db.c
+    ├── main.c
+    ├── protocol
+    │   ├── network.c
+    │   ├── network.h
+    │   └── protocol.h
+    ├── server
+    │   ├── server.c
+    │   └── server.h
+    ├── tetris_game.c
+    ├── tetris_game.h
+    ├── ultis.c
+    └── ultis.h
 ```
-
-- `assets/` contains images and fonts used for the game's UI.
-- `config/` contains configuration files.
-- `src/` contains all the source files for the client, server, game logic, and protocol handling.
-- `CMakeLists.txt` is the build configuration file for CMake.
-- `README.md` is this file.
 
 ## Requirements
 
@@ -57,6 +52,7 @@ This project is a Tetris game built using C, SDL2, and WebSocket for real-time m
 - **SDL2_ttf**: SDL2 extension for working with TrueType fonts.
 - **pthread**: For multithreading support.
 - **pkg-config**: For handling library dependencies.
+- **PostgreSQL (psql)**: For managing the database.
 
 ## Building the Project
 
@@ -69,98 +65,48 @@ git clone https://github.com/your-username/tetris-websocket.git
 cd tetris-websocket
 ```
 
-### 2. Install Dependencies (NEED TO CHECK !!!)
+### 2. Install Dependencies (NEED TO BE CHECKED !!!)
 
 Ensure that you have SDL2, SDL2_ttf, and pthread installed. On Ubuntu, you can install them using the following commands:
 
 ```bash
 sudo apt-get update
-sudo apt-get install libsdl2-dev libsdl2-ttf-dev libpthread-stubs0-dev
+sudo apt-get install libsdl2-dev libsdl2-ttf-dev libpthread-stubs0-dev postgresql postgresql-client
 ```
 
-### 3. Build the Project with CMake
+### 3. Build the Project
 
-To build the project, follow these steps:
-
-1. **Run the build script**:
-
-   To automate the process of creating the build directory, configuring the project, and building it, simply run the `build_project.sh` script:
-
-   ```bash
-   ./build_project.sh
-   ```
-
-   This will:
-   - Create the `build` directory if it doesn't exist.
-   - Run `cmake` to configure the project.
-   - Build the project using `make`.
-   - Build server, test_client_menu, tetris_offline in build/bin.
-
-2. **Alternatively, manually build the project**:
-
-   If you prefer to manually set up the build environment, follow these steps:
-
-   - Create a build directory:
-
-     ```bash
-     mkdir build
-     cd build
-     ```
-
-   - Run CMake to configure the project:
-
-     ```bash
-     cmake ..
-     ```
-
-   - Build the project using `make`:
-
-     ```bash
-     make
-     ```
-
-### 4. Build Specific Targets
-
-You can build the specific components of the project (server, test client, and Tetris offline game) by running:
+Run the `build_project.sh` script to automate the build process:
 
 ```bash
-make server
-make test_client_menu
-make tetris_offline
+./build_project.sh
 ```
 
-### 5. Run the Game
+This will:
+- Create the `build` directory if it doesn't exist.
+- Run `cmake` to configure the project.
+- Build the project using `make`.
 
-Once the project is successfully built, you can run the Tetris game with the following command:
+### Outputs
 
-```bash
-./tetris_offline
-```
+The following executables will be created in the `build/bin/` directory:
+- **db**: Creates a database in PostgreSQL.
+- **server**: Initializes the server.
+- **test_client_menu**: Provides a client menu in the console command line.
 
-To run the server and client, use the following commands:
+## Running the Game
 
 1. **Start the server**:
 
    ```bash
-   ./bin/server 
+   ./bin/server
    ```
 
 2. **Start the client**:
 
    ```bash
-   ./bin/test_client_menu 
+   ./bin/test_client_menu
    ```
-
-
-## Usage
-
-- The **server** manages the game state and handles communication between multiple clients.
-- The **client** connects to the server, allowing a player to interact with the game.
-
-### Client-Server Communication
-
-- The game uses WebSocket for real-time communication between the client and server.
-- The server uses multithreading to handle multiple client connections simultaneously.
 
 ## Customization
 
