@@ -133,33 +133,74 @@ Message handle_login(const Message *msg, PGconn* conn) {
 }
 
 
-// Handle creating a new room
+
+// Function to handle CREATE_ROOM message
 Message handle_create_room(Message* msg, PGconn* conn) {
     Message response;
-    write_to_log("1");
+    memset(&response, 0, sizeof(Message));
+
+    // Log the start of function execution
+    write_to_log("handle_create_room: Starting function execution");
+
+    // Log incoming message details
+    write_to_log("handle_create_room: Received message");
+    write_to_log(msg->room_name); // Assuming `room_name` is null-terminated
+    write_to_log(msg->data);      // Assuming `data` (session ID) is null-terminated
+
+    // Define the SQL query to insert a new room, using the user_id for host_id
     const char* query = "INSERT INTO rooms (room_name, host_id) "
-                        "VALUES ($1, (SELECT username FROM sessions WHERE session_id = $2));";
+                        "VALUES ($1, (SELECT user_id FROM users WHERE username = (SELECT username FROM sessions WHERE session_id = $2)));";
     const char* paramValues[2] = { msg->room_name, msg->data };  // sessionID is passed as msg->data
 
+    // Log the preparation for query execution
+    write_to_log("handle_create_room: Preparing to execute query");
+
+    // Execute the query with parameters
     PGresult* res = PQexecParams(conn, query, 2, NULL, paramValues, NULL, NULL, 0);
-    write_to_log("2");
-    bool success = (PQresultStatus(res) == PGRES_COMMAND_OK);
     
-    PQclear(res);
-    write_to_log("3");
-    // Set the response data and type based on success or failure
-    if (success) {
-        strcpy(response.data, "Room created successfully!");
-        response.type = JOIN_ROOM_SUCCESS;  // Success type
+    // Check if the query execution returned NULL (failure)
+    if (res == NULL) {
+        write_to_log("handle_create_room: PQexecParams returned NULL");
+        // Log the PostgreSQL error message
+        write_to_log("PostgreSQL error: ");
+        write_to_log(PQerrorMessage(conn)); // Log connection-level error
     } else {
-        strcpy(response.data, "Failed to create room.");
-        response.type = JOIN_ROOM_FAILURE;  // Failure type
+        // Log the result status of the query
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg), "handle_create_room: Query executed, status: %s",
+                 PQresStatus(PQresultStatus(res)));
+        write_to_log(log_msg);
+
+        // If the query failed, log the specific PostgreSQL error message
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            write_to_log("handle_create_room: PostgreSQL query execution error");
+            write_to_log(PQresultErrorMessage(res));  // Log the query-level error message
+        }
     }
 
-    return response;  // Return the Message struct with appropriate response
+    // Determine success based on the query result status
+    bool success = (res != NULL && PQresultStatus(res) == PGRES_COMMAND_OK);
+
+    // Clear the result memory
+    PQclear(res);
+
+    // Log the result of the operation and set the response type
+    if (success) {
+        write_to_log("handle_create_room: Room creation successful");
+        strcpy(response.data, "Room created successfully!");
+        response.type = CREATE_ROOM_SUCCESS;  // Success type
+    } else {
+        write_to_log("handle_create_room: Room creation failed");
+        strcpy(response.data, "Failed to create room.");
+        response.type = CREATE_ROOM_FAILURE;  // Failure type
+    }
+
+    // Log the final response preparation
+    write_to_log("handle_create_room: Returning response");
+
+    // Return the Message struct with the appropriate response
+    return response;
 }
-
-
 // Handle joining an existing room
 bool handleJoinRoom(PGconn* conn, const char* sessionID, const char* roomID) {
     const char* query = "INSERT INTO room_participants (room_id, user_id) "
