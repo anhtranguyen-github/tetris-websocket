@@ -85,6 +85,14 @@ void create_tables(PGconn *conn) {
         "password_hash VARCHAR(255) NOT NULL,"
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
 
+
+    const char *create_sessions = 
+        "CREATE TABLE IF NOT EXISTS sessions ("
+        "session_id VARCHAR(255) PRIMARY KEY,"
+        "username VARCHAR(50) NOT NULL REFERENCES users(username) ON DELETE CASCADE,"
+        "expiration TIMESTAMP NOT NULL);";
+
+
     const char *create_rooms = 
         "CREATE TABLE IF NOT EXISTS rooms ("
         "room_id SERIAL PRIMARY KEY,"
@@ -118,18 +126,13 @@ void create_tables(PGconn *conn) {
         "PRIMARY KEY (game_id, user_id));";
 
 
-    const char *create_sessions = 
-        "CREATE TABLE IF NOT EXISTS sessions ("
-        "session_id VARCHAR(255) PRIMARY KEY,"
-        "username VARCHAR(50) NOT NULL REFERENCES users(username) ON DELETE CASCADE,"
-        "expiration TIMESTAMP NOT NULL);";
-
     execute_query(conn, create_users);
+    execute_query(conn, create_sessions);
     execute_query(conn, create_rooms);
     execute_query(conn, create_room_players);
     execute_query(conn, create_games);
     execute_query(conn, create_game_scores);
-    execute_query(conn, create_sessions);
+    
 }
 
 
