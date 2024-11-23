@@ -1,0 +1,182 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include "../protocol/network.c"
+#include "../protocol/protocol.h"
+#include "../../config/client_config.h"
+// Function to display the menu
+void print_menu() {
+    printf("\nClient Menu:\n");
+    printf("1. Login\n");
+    printf("2. Create Room\n");
+    printf("3. Join Room\n");
+    printf("4. Disconnect\n");
+    printf("5. Exit\n");
+    printf("Choose an option: ");
+}
+
+// Function to handle login
+void login(int client_fd) {
+    char username[MAX_USERNAME], password[MAX_USERNAME];
+    printf("Enter username: ");
+    scanf("%s", username);
+    printf("Enter password: ");
+    scanf("%s", password);
+
+    Message msg = {LOGIN, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+    strncpy(msg.data, password, BUFFER_SIZE);
+
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    Message response;
+    recv(client_fd, &response, sizeof(Message), 0);
+
+    if (response.type == LOGIN_SUCCESS) {
+        printf("Login successful! Welcome, %s.\n", username);
+    } else if (response.type == LOGIN_FAILURE) {
+        printf("Login failed! Please try again.\n");
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
+}
+
+
+void create_room(int client_fd) {
+    char room_name[MAX_ROOM_NAME];
+    char session_id[MAX_SESSION_ID];
+    char username[MAX_USERNAME];
+    int time_limit = DEFAULT_TIME_LIMIT;
+    int brick_limit = DEFAULT_BRICK_LIMIT;
+    int max_player = DEFAULT_MAX_PLAYER;
+
+    printf("Enter username: ");
+    scanf("%s", username);
+    printf("Enter room name: ");
+    scanf("%s", room_name);
+    printf("Enter session ID: ");
+    scanf("%s", session_id);
+    printf("Enter time limit (-1 for unlimited): ");
+    scanf("%d", &time_limit);
+    printf("Enter brick limit (-1 for unlimited): ");
+    scanf("%d", &brick_limit);
+    printf("Enter max player: ");
+    scanf("%d", &max_player);
+
+    Message msg = {CREATE_ROOM, "", "", ""};
+    // Format the additional data into msg.data as a delimited string
+    snprintf(
+        msg.data, sizeof(msg.data),
+        "%s|%d|%d|%d", 
+        session_id, time_limit, brick_limit, max_player
+    );
+
+    // Prepare the message to send to the server
+    
+    strncpy(msg.username, username, MAX_USERNAME);
+    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
+
+    // Send the message to the server
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    // Receive the server's response
+    Message response;
+    int bytes_received = recv(client_fd, &response, sizeof(Message), 0);
+
+    if (bytes_received <= 0) {
+        printf("Error receiving response from server.\n");
+        return;
+    }
+
+    // Handle the server's response
+    if (response.type == CREATE_ROOM_SUCCESS) {
+        printf("Room created successfully: %s\n", response.data);
+    } else if (response.type == CREATE_ROOM_FAILURE) {
+        printf("Failed to create room: %s\n", response.data);
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
+}
+
+
+// Function to handle room joining
+void join_room(int client_fd) {
+    char room_name[MAX_ROOM_NAME];
+    printf("Enter room name to join: ");
+    scanf("%s", room_name);
+
+    Message msg = {JOIN_ROOM, "", "", ""};
+    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
+
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    Message response;
+    recv(client_fd, &response, sizeof(Message), 0);
+
+    if (response.type == ROOM_JOINED) {
+        printf("Successfully joined room: %s\n", room_name);
+    } else if (response.type == ROOM_NOT_FOUND) {
+        printf("Failed to join room: %s\n", response.data);
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
+}
+
+// Function to handle disconnection
+void disconnect(int client_fd) {
+    Message msg = {DISCONNECT, "", "", "Disconnecting"};
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    Message response;
+    recv(client_fd, &response, sizeof(Message), 0);
+
+    if (response.type == DISCONNECT) {
+        printf("Disconnected successfully.\n");
+    } else {
+        printf("Unexpected response type: %d\n", response.type);
+    }
+}
+
+// Main client function
+void client_function(const char *server_ip) {
+    int client_fd = create_client_socket(server_ip);
+    if (client_fd < 0) {
+        fprintf(stderr, "Client: Failed to connect to server\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int choice;
+    while (1) {
+        print_menu();
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                login(client_fd);
+                break;
+            case 2:
+                create_room(client_fd);
+                break;
+            case 3:
+                join_room(client_fd);
+                break;
+            case 4:
+                disconnect(client_fd);
+                break;
+            case 5:
+                printf("Exiting client...\n");
+                close(client_fd);
+                return;
+            default:
+                printf("Invalid option. Please try again.\n");
+                break;
+        }
+    }
+}
+
+int main() {
+    const char *server_ip = "127.0.0.1";  // Change to your server's IP address
+    client_function(server_ip);
+    return 0;
+}

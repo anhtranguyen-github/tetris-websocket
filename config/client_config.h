@@ -1,0 +1,11 @@
+#ifndef CLIENT_CONFIG_H
+#define CLIENT_CONFIG_H
+
+#define DEFAULT_TIME_LIMIT 10
+#define DEFAULT_BRICK_LIMIT 500
+#define DEFAULT_MAX_PLAYER 4
+
+#define TIME_LIMIT_UNLIMITED -1        
+#define BRICK_LIMIT_UNLIMITED -1
+
+#endif 

@@ -40,3 +40,9 @@
 
 # Ignore cache files
 *.cache
+
+
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles/
+log.txt
