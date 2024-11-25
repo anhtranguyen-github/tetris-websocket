@@ -158,6 +158,9 @@ void lobby(SDL_Renderer* renderer, TTF_Font* font) {
 int main() {
 
     
+    initShapeList();
+    generateShapes(100);
+    newRandomShape2();
     
     
     srand(time(NULL));
@@ -168,14 +171,11 @@ int main() {
     TTF_Font *font = TTF_OpenFont("../fonts/Roboto-Black.ttf", 24);
 
 
-    connectToServer();
-    loginScreen(renderer, font);
-    lobby(renderer, font);
+    //connectToServer();
+    //loginScreen(renderer, font);
+    //lobby(renderer, font);
 
 
-    initShapeList();
-    generateShapes(100);
-    newRandomShape2();
     int quit = 0;
     int lastTime = SDL_GetTicks();
     while (GameOn && !quit) {
