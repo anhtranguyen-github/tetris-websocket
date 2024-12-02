@@ -258,11 +258,11 @@ int main() {
     create_tables(conn);
 
     // Adding multiple users
-    insert_user(conn, "player1", "hashed_password1");
-    insert_user(conn, "player2", "hashed_password2");
-    insert_user(conn, "player3", "hashed_password3");
-    insert_user(conn, "player4", "hashed_password4");
-    insert_user(conn, "player5", "hashed_password5");
+    insert_user(conn, "player1", "hashedpassword1");
+    insert_user(conn, "player2", "hashedpassword2");
+    insert_user(conn, "player3", "hashedpassword3");
+    insert_user(conn, "player4", "hashedpassword4");
+    insert_user(conn, "player5", "hashedpassword5");
 
     // Fetch all users to verify
     fetch_users(conn);
