@@ -11,8 +11,9 @@ void print_menu() {
     printf("1. Login\n");
     printf("2. Create Room\n");
     printf("3. Join Room\n");
-    printf("4. Disconnect\n");
-    printf("5. Exit\n");
+    printf("4. Join Room\n");
+    printf("5. Disconnect\n");
+    printf("6. Exit\n");
     printf("Choose an option: ");
 }
 
@@ -158,6 +159,53 @@ void join_room(int client_fd) {
 }
 
 
+void join_random_room(int client_fd) {
+    char session_id[MAX_SESSION_ID];
+    char username[MAX_USERNAME];
+
+    // Prompt user for session ID and username
+    printf("Enter session ID: ");
+    scanf("%s", session_id);
+
+    printf("Enter your username: ");
+    scanf("%s", username);
+
+    // Create the JOIN_RANDOM_ROOM message
+    Message msg = {0};
+    msg.type = JOIN_RANDOM;
+    strncpy(msg.username, username, MAX_USERNAME);
+    snprintf(msg.data, BUFFER_SIZE, "%s", session_id);  // Only session_id is needed for random room join
+
+    // Send JOIN_RANDOM_ROOM message to server
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    // Receive response from server
+    Message response;
+    recv(client_fd, &response, sizeof(Message), 0);
+
+    // Handle the response
+    switch (response.type) {
+        case ROOM_JOINED:
+            printf("Successfully joined random room: %s\n", response.room_name);
+            printf("Server message: %s\n", response.data);
+            break;
+
+        case ROOM_NOT_FOUND:
+            printf("Failed to join a random room: %s\n", response.data);
+            break;
+
+        case JOIN_ROOM_FAILURE:
+            printf("Unexpected error occurred while joining a random room: %s\n", response.data);
+            break;
+
+        default:
+            printf("Unexpected response type: %d\n", response.type);
+            break;
+    }
+}
+
+
+
 // Function to handle disconnection
 void disconnect(int client_fd) {
     Message msg = {DISCONNECT, "", "", "Disconnecting"};
@@ -197,9 +245,12 @@ void client_function(const char *server_ip) {
                 join_room(client_fd);
                 break;
             case 4:
-                disconnect(client_fd);
+                join_random_room(client_fd);
                 break;
             case 5:
+                disconnect(client_fd);
+                break;
+            case 6:
                 printf("Exiting client...\n");
                 close(client_fd);
                 return;

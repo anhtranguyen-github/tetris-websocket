@@ -316,14 +316,17 @@ Message handle_join_room(Message *msg, PGconn *conn) {
         return response;
     }
 
-    // Add the player to the room
+    // Add the player to the room (fixing the session_id issue)
     snprintf(query, BUFFER_SIZE,
              "INSERT INTO room_players (room_id, user_id) "
-             "SELECT %d, user_id FROM users WHERE session_id = '%s';",
+             "SELECT %d, u.user_id FROM users u "
+             "JOIN sessions s ON u.username = s.username "
+             "WHERE s.session_id = '%s';",
              room_id, session_id);
     write_to_log("Executing query to add player to room:");
     write_to_log(query);
     result = PQexec(conn, query);
+
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
         write_to_log("Failed to add player to room.");
         write_to_log(PQerrorMessage(conn));  // Log the detailed error from PostgreSQL
@@ -349,6 +352,88 @@ Message handle_join_room(Message *msg, PGconn *conn) {
     return response;
 }
 
+Message handle_join_random_room(Message *msg, PGconn *conn) {
+    Message response = {0};
+    char session_id[MAX_SESSION_ID];
+    char query[BUFFER_SIZE];
+    PGresult *result;
+
+    strncpy(session_id, msg->data, MAX_SESSION_ID);
+    write_to_log("Joining a random room for session:");
+    write_to_log(session_id);
+
+    // Query to find a random available room
+    snprintf(query, BUFFER_SIZE,
+             "SELECT room_id, room_name, max_players, "
+             "(SELECT COUNT(*) FROM room_players WHERE room_id = rooms.room_id) AS current_players, "
+             "(SELECT status FROM games WHERE room_id = rooms.room_id ORDER BY start_time DESC LIMIT 1) AS game_status "
+             "FROM rooms "
+             "WHERE max_players > (SELECT COUNT(*) FROM room_players WHERE room_id = rooms.room_id) "
+             "AND NOT EXISTS (SELECT 1 FROM games WHERE room_id = rooms.room_id AND status = 1) "
+             "ORDER BY RANDOM() LIMIT 1;");
+    write_to_log("Executing query to find a random room:");
+    write_to_log(query);
+    result = PQexec(conn, query);
+
+    if (PQntuples(result) == 0) {
+        write_to_log("No available random rooms found.");
+        response.type = ROOM_NOT_FOUND;
+        snprintf(response.data, BUFFER_SIZE, "No available rooms to join.");
+        PQclear(result);
+        return response;
+    }
+
+    int room_id = atoi(PQgetvalue(result, 0, 0));
+    char room_name[MAX_ROOM_NAME];
+    strncpy(room_name, PQgetvalue(result, 0, 1), MAX_ROOM_NAME);
+    int max_players = atoi(PQgetvalue(result, 0, 2));
+    int current_players = atoi(PQgetvalue(result, 0, 3));
+    int game_status = PQgetvalue(result, 0, 4) ? atoi(PQgetvalue(result, 0, 4)) : 0;
+
+    write_to_log("Random room details fetched:");
+    write_to_log_int(room_id);
+    write_to_log(room_name);
+    write_to_log_int(max_players);
+    write_to_log_int(current_players);
+    write_to_log_int(game_status);
+
+    PQclear(result);
+
+    // Add the player to the random room
+    snprintf(query, BUFFER_SIZE,
+             "INSERT INTO room_players (room_id, user_id) "
+             "SELECT %d, u.user_id FROM users u "
+             "JOIN sessions s ON u.username = s.username "
+             "WHERE s.session_id = '%s';",
+             room_id, session_id);
+    write_to_log("Executing query to add player to random room:");
+    write_to_log(query);
+    result = PQexec(conn, query);
+
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+        write_to_log("Failed to add player to random room.");
+        write_to_log(PQerrorMessage(conn));
+
+        response.type = JOIN_ROOM_FAILURE;
+        snprintf(response.data, BUFFER_SIZE, "Failed to join room '%s'.", room_name);
+        PQclear(result);
+        return response;
+    }
+
+    PQclear(result);
+    write_to_log("Player successfully added to random room.");
+
+    // Construct success response
+    response.type = ROOM_JOINED;
+    snprintf(response.data, BUFFER_SIZE, "Successfully joined room '%s'.", room_name);
+    strncpy(response.room_name, room_name, MAX_ROOM_NAME);
+    strncpy(response.username, msg->username, MAX_USERNAME);
+
+    write_to_log("Response constructed successfully:");
+    write_to_log(response.data);
+
+    return response;
+}
 
 
 
@@ -377,6 +462,10 @@ void handleClientRequest(int clientSocket, PGconn* conn) {
 
             case JOIN_ROOM:
                 response = handle_join_room(&msg, conn);
+                break;
+            
+            case JOIN_RANDOM:
+                response = handle_join_random_room(&msg, conn);
                 break;
 
             case DISCONNECT:
