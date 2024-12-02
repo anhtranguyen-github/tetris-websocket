@@ -8,4 +8,8 @@
 #define PING_INTERVAL 15
 #define ENABLE_LOGGING 1
 
+#define NOT_STARTED 1;
+#define STARTED 0;
+
+
 #endif
