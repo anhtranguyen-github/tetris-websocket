@@ -5,15 +5,16 @@
 #include <time.h>
 #include <string.h>
 #include "tetris_game.h"
+#include "client_utils.h"
 
-
+Shape current;
+ShapeList shapeList;
 
 int Table[20][15] = {0};
 int score = 0;
 int GameOn = 1;
 int timer = 400;
 int decrease = 1;
-
 
 LeaderboardEntry leaderboard[LEADERBOARD_SIZE] = {
     {"Player1", 0},
@@ -49,10 +50,7 @@ void generateShapes(int number) {
         }
     }
 }
-ShapeList shapeList;
 
-
-Shape current;
 Shape viewNextShape(const ShapeList *shapeList) {
     if (shapeList->count == 0) {
         fprintf(stderr, "ShapeList is empty!\n");
@@ -147,8 +145,6 @@ void newRandomShape2() {
     }
 }
 
-
-
 void mergeShape() {
     for (int i = 0; i < current.width; i++) {
         for (int j = 0; j < current.width; j++) {
@@ -228,6 +224,26 @@ void drawBlock(SDL_Renderer *renderer, int x, int y, SDL_Color color) {
     SDL_RenderDrawRect(renderer, &rect);
 }
 
+void renderButton(SDL_Renderer *renderer, TTF_Font *font, Button button) {
+    SDL_SetRenderDrawColor(renderer, button.color.r, button.color.g, button.color.b, 255);
+    SDL_RenderFillRect(renderer, &button.rect);
+
+    SDL_Color textColor = {255, 255, 255, 255};
+    SDL_Surface *surface = TTF_RenderText_Solid(font, button.text, textColor);
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+    int textWidth = surface->w;
+    int textHeight = surface->h;
+    SDL_Rect textRect = {button.rect.x + (button.rect.w - textWidth) / 2, button.rect.y + (button.rect.h - textHeight) / 2, textWidth, textHeight};
+
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &textRect);
+    SDL_DestroyTexture(texture);
+}
+
+int handleButtonClick(Button button, int x, int y) {
+    return (x >= button.rect.x && x <= button.rect.x + button.rect.w && y >= button.rect.y && y <= button.rect.y + button.rect.h);
+}
 
 void handleEvents(int *quit) {
     SDL_Event e;
@@ -245,8 +261,6 @@ void handleEvents(int *quit) {
     }
 }
 
-
-
 void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Color white = {255, 255, 255};
     SDL_Surface *surface;
@@ -254,24 +268,15 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Rect rect;
     char buffer[50];
 
-    // Render leaderboard entries
+    // Render each leaderboard entry
     for (int i = 0; i < LEADERBOARD_SIZE; i++) {
         snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
         surface = TTF_RenderText_Solid(font, buffer, white);
-        if (!surface) {
-            printf("Error creating surface for leaderboard text: %s\n", TTF_GetError());
-            continue;
-        }
-
         texture = SDL_CreateTextureFromSurface(renderer, surface);
-        if (!texture) {
-            printf("Error creating texture for leaderboard text: %s\n", SDL_GetError());
-            SDL_FreeSurface(surface);
-            continue;
-        }
-
-        rect.x = SCREEN_WIDTH - 300;  // Right side of the screen
-        rect.y = 10 + i * 30;         // Vertical spacing
+        
+        // Position leaderboard entries to the right of the game screen
+        rect.x = SCREEN_WIDTH - 300;  // Assuming SCREEN_WIDTH is the width of the game area
+        rect.y = 10 + i * 30;        // Adjust spacing between entries
         rect.w = surface->w;
         rect.h = surface->h;
 
@@ -307,7 +312,6 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
         }
     }
 }
-
 
 void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_Color colors[] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};
@@ -349,4 +353,490 @@ void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
 
 void updatePlayerScore(int newScore) {
     leaderboard[0].score = newScore;
+}
+
+void renderLoginScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *password, int usernameSelected) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gray = {128, 128, 128, 255};
+
+    SDL_Surface *surface;
+    SDL_Texture *texture;
+    SDL_Rect rect;
+
+    // Render username label
+    surface = TTF_RenderText_Solid(font, "Username:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 - 100;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render username input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect usernameRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 70, 200, 30};
+    SDL_RenderDrawRect(renderer, &usernameRect);
+    const char *usernameText = strlen(username) > 0 ? username : "Enter username";
+    SDL_Color usernameColor = strlen(username) > 0 ? (usernameSelected ? white : gray) : gray;
+    surface = TTF_RenderText_Solid(font, usernameText, usernameColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = usernameRect.x + 5;
+    rect.y = usernameRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render password label
+    surface = TTF_RenderText_Solid(font, "Password:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 - 30;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render password input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect passwordRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, 200, 30};
+    SDL_RenderDrawRect(renderer, &passwordRect);
+    const char *passwordText = strlen(password) > 0 ? password : "Enter password";
+    SDL_Color passwordColor = strlen(password) > 0 ? (!usernameSelected ? white : gray) : gray;
+    char passwordDisplay[MAX_PASSWORD];
+    if (strlen(password) > 0) {
+        memset(passwordDisplay, '*', strlen(password));
+        passwordDisplay[strlen(password)] = '\0';
+    } else {
+        strcpy(passwordDisplay, passwordText);
+    }
+    surface = TTF_RenderText_Solid(font, passwordDisplay, passwordColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = passwordRect.x + 5;
+    rect.y = passwordRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    SDL_RenderPresent(renderer);
+}
+
+void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *password, int *usernameSelected, int client_fd) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode key = e.key.keysym.sym;
+            int shiftPressed = (SDL_GetModState() & KMOD_SHIFT);
+            if (key == SDLK_TAB) {
+                *usernameSelected = !*usernameSelected;
+                printf("Switched input field. Username selected: %d\n", *usernameSelected);
+            } else if (key == SDLK_BACKSPACE) {
+                if (*usernameSelected && strlen(username) > 0) {
+                    username[strlen(username) - 1] = '\0';
+                    printf("Username: %s\n", username);
+                } else if (!*usernameSelected && strlen(password) > 0) {
+                    password[strlen(password) - 1] = '\0';
+                    printf("Password: %s\n", password);
+                }
+            } else if (key == SDLK_RETURN) {
+                if (send_login_request(client_fd, username, password)) {
+                    *loginSuccess = 1;
+                    printf("Login success.\n");
+                } else {
+                    printf("Login failed. Invalid username or password.\n");
+                }
+            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
+                char keyChar = (char)key;
+                if (shiftPressed) {
+                    // Map shifted characters
+                    switch (key) {
+                        case SDLK_1: keyChar = '!'; break;
+                        case SDLK_2: keyChar = '@'; break;
+                        case SDLK_3: keyChar = '#'; break;
+                        case SDLK_4: keyChar = '$'; break;
+                        case SDLK_5: keyChar = '%'; break;
+                        case SDLK_6: keyChar = '^'; break;
+                        case SDLK_7: keyChar = '&'; break;
+                        case SDLK_8: keyChar = '*'; break;
+                        case SDLK_9: keyChar = '('; break;
+                        case SDLK_0: keyChar = ')'; break;
+                        case SDLK_MINUS: keyChar = '_'; break;
+                        case SDLK_EQUALS: keyChar = '+'; break;
+                        case SDLK_LEFTBRACKET: keyChar = '{'; break;
+                        case SDLK_RIGHTBRACKET: keyChar = '}'; break;
+                        case SDLK_BACKSLASH: keyChar = '|'; break;
+                        case SDLK_SEMICOLON: keyChar = ':'; break;
+                        case SDLK_QUOTE: keyChar = '"'; break;
+                        case SDLK_COMMA: keyChar = '<'; break;
+                        case SDLK_PERIOD: keyChar = '>'; break;
+                        case SDLK_SLASH: keyChar = '?'; break;
+                        default:
+                            if (key >= SDLK_a && key <= SDLK_z) {
+                                keyChar = (char)(key - 32); // Convert to uppercase
+                            }
+                            break;
+                    }
+                }
+                if (*usernameSelected && strlen(username) < MAX_USERNAME - 1) {
+                    strncat(username, &keyChar, 1);
+                    printf("Username: %s\n", username);
+                } else if (!*usernameSelected && strlen(password) < MAX_PASSWORD - 1) {
+                    strncat(password, &keyChar, 1);
+                    printf("Password: %s\n", password);
+                }
+            }
+        }
+    }
+}
+
+void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *room_name, const char *session_id, int time_limit, int brick_limit, int max_player, int selectedField) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gray = {128, 128, 128, 255};
+
+    SDL_Surface *surface;
+    SDL_Texture *texture;
+    SDL_Rect rect;
+
+    // Render username label
+    surface = TTF_RenderText_Solid(font, "Username:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 - 150;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render username input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect usernameRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 120, 200, 30};
+    SDL_RenderDrawRect(renderer, &usernameRect);
+    const char *usernameText = strlen(username) > 0 ? username : "Enter username";
+    SDL_Color usernameColor = strlen(username) > 0 ? (selectedField == 0 ? white : gray) : gray;
+    surface = TTF_RenderText_Solid(font, usernameText, usernameColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = usernameRect.x + 5;
+    rect.y = usernameRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render room name label
+    surface = TTF_RenderText_Solid(font, "Room Name:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 - 90;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render room name input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect roomNameRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 60, 200, 30};
+    SDL_RenderDrawRect(renderer, &roomNameRect);
+    const char *roomNameText = strlen(room_name) > 0 ? room_name : "Enter room name";
+    SDL_Color roomNameColor = strlen(room_name) > 0 ? (selectedField == 1 ? white : gray) : gray;
+    surface = TTF_RenderText_Solid(font, roomNameText, roomNameColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = roomNameRect.x + 5;
+    rect.y = roomNameRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render time limit label
+    surface = TTF_RenderText_Solid(font, "Time Limit:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 + 30;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render time limit input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect timeLimitRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 60, 200, 30};
+    SDL_RenderDrawRect(renderer, &timeLimitRect);
+    char timeLimitText[12];
+    snprintf(timeLimitText, sizeof(timeLimitText), "%d", time_limit);
+    SDL_Color timeLimitColor = selectedField == 3 ? white : gray;
+    surface = TTF_RenderText_Solid(font, timeLimitText, timeLimitColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = timeLimitRect.x + 5;
+    rect.y = timeLimitRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render brick limit label
+    surface = TTF_RenderText_Solid(font, "Brick Limit:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 + 90;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render brick limit input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect brickLimitRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 120, 200, 30};
+    SDL_RenderDrawRect(renderer, &brickLimitRect);
+    char brickLimitText[12];
+    snprintf(brickLimitText, sizeof(brickLimitText), "%d", brick_limit);
+    SDL_Color brickLimitColor = selectedField == 4 ? white : gray;
+    surface = TTF_RenderText_Solid(font, brickLimitText, brickLimitColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = brickLimitRect.x + 5;
+    rect.y = brickLimitRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render max player label
+    surface = TTF_RenderText_Solid(font, "Max Player:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 + 150;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render max player input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect maxPlayerRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 180, 200, 30};
+    SDL_RenderDrawRect(renderer, &maxPlayerRect);
+    char maxPlayerText[12];
+    snprintf(maxPlayerText, sizeof(maxPlayerText), "%d", max_player);
+    SDL_Color maxPlayerColor = selectedField == 5 ? white : gray;
+    surface = TTF_RenderText_Solid(font, maxPlayerText, maxPlayerColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = maxPlayerRect.x + 5;
+    rect.y = maxPlayerRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    SDL_RenderPresent(renderer);
+}
+
+
+void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, char *room_name, char *session_id, int *time_limit, int *brick_limit, int *max_player, int *selectedField, int client_fd) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode key = e.key.keysym.sym;
+            if (key == SDLK_TAB) {
+                *selectedField = (*selectedField + 1) % 6;
+            } else if (key == SDLK_BACKSPACE) {
+                if (*selectedField == 0 && strlen(username) > 0) {
+                    username[strlen(username) - 1] = '\0';
+                } else if (*selectedField == 1 && strlen(room_name) > 0) {
+                    room_name[strlen(room_name) - 1] = '\0';
+                } else if (*selectedField == 3 && *time_limit != TIME_LIMIT_UNLIMITED) {
+                    *time_limit = *time_limit / 10;
+                } else if (*selectedField == 4 && *brick_limit != BRICK_LIMIT_UNLIMITED) {
+                    *brick_limit = *brick_limit / 10;
+                } else if (*selectedField == 5 && *max_player > 0) {
+                    *max_player = *max_player / 10;
+                }
+            } else if (key == SDLK_RETURN) {
+                Message msg = {CREATE_ROOM, "", "", ""};
+                snprintf(msg.data, sizeof(msg.data), "%s|%d|%d|%d", session_id, *time_limit, *brick_limit, *max_player);
+                strncpy(msg.username, username, MAX_USERNAME);
+                strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
+                send(client_fd, &msg, sizeof(Message), 0);
+
+                Message response;
+                int bytes_received = recv(client_fd, &response, sizeof(Message), 0);
+
+                if (bytes_received <= 0) {
+                    printf("Error receiving response from server.\n");
+                    return;
+                }
+
+                if (response.type == CREATE_ROOM_SUCCESS) {
+                    printf("Room created successfully: %s\n", response.data);
+                    *createRoomSuccess = 1;
+                } else if (response.type == CREATE_ROOM_FAILURE) {
+                    printf("Failed to create room: %s\n", response.data);
+                } else {
+                    printf("Unexpected response type: %d\n", response.type);
+                }
+            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
+                char keyChar = (char)key;
+                if (*selectedField == 0 && strlen(username) < MAX_USERNAME - 1) {
+                    strncat(username, &keyChar, 1);
+                } else if (*selectedField == 1 && strlen(room_name) < MAX_ROOM_NAME - 1) {
+                    strncat(room_name, &keyChar, 1);
+                } else if (*selectedField == 3 && *time_limit < 1000000) {
+                    *time_limit = *time_limit * 10 + (key - SDLK_0);
+                } else if (*selectedField == 4 && *brick_limit < 1000000) {
+                    *brick_limit = *brick_limit * 10 + (key - SDLK_0);
+                } else if (*selectedField == 5 && *max_player < 10) {
+                    *max_player = *max_player * 10 + (key - SDLK_0);
+                }
+            }
+        }
+    }
 }

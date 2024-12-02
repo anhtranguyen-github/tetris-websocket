@@ -1,68 +1,69 @@
-    // src/tetris_game.h
+#ifndef TETRIS_GAME_H
+#define TETRIS_GAME_H
 
-    #ifndef TETRIS_GAME_H
-    #define TETRIS_GAME_H
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
-    // src/tetris_game.c or src/tetris_game.h
+#define LEADERBOARD_SIZE 5
+#define BLOCK_SIZE 30
+#define COLS 15
+#define ROWS 20
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 600
+#define MAX_SHAPES 100
+#define MAX_USERNAME 32
+#define MAX_PASSWORD 32
 
-    #define LEADERBOARD_SIZE 5      // Size of the leaderboard
-    #define BLOCK_SIZE 30          // Size of each block in the Tetris grid
-    #define COLS 15                // Number of columns in the grid
-    #define ROWS 20                // Number of rows in the grid
-    #define SCREEN_WIDTH 800       // Screen width for rendering
-    #define SCREEN_HEIGHT 600      // Screen height for rendering
-    #define MAX_SHAPES 100
+extern int Table[20][15];
+extern int score;
+extern int GameOn;
+extern int timer;
+extern int decrease;
 
+typedef struct {
+    int **array;
+    int width, row, col;
+} Shape;
 
-    extern int Table[20][15];      // No initialization here
-    extern int score;
-    extern int GameOn;
-    extern int timer;
-    extern int decrease;
+typedef struct {
+    Shape shapes[MAX_SHAPES];
+    int count;
+    int current;
+} ShapeList;
 
+typedef struct {
+    char name[20];
+    int score;
+} LeaderboardEntry;
 
-    typedef struct {
-        int **array;
-        int width, row, col;
-    } Shape;
+typedef struct {
+    SDL_Rect rect;
+    SDL_Color color;
+    const char *text;
+} Button;
 
-    typedef struct {
-        Shape shapes[MAX_SHAPES];
-        int count;    // Number of shapes currently in the list
-        int current;  // Index of the current shape in the list
-    } ShapeList;
+extern Shape current;
+extern ShapeList shapeList;
+extern LeaderboardEntry leaderboard[5];
+extern const int ShapesArray[7][4][4];
 
+void drawBlock(SDL_Renderer *renderer, int x, int y, SDL_Color color);
+Shape copyShape(const int shapeArray[4][4], int width);
+void freeShape(Shape shape);
+int checkPosition(Shape shape);
+void newRandomShape();
+void newRandomShape2();
+void mergeShape();
+void clearLines();
+void moveShapeDown();
+void rotateShape();
+void handleEvents(int *quit);
+void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font);
+void renderGame(SDL_Renderer *renderer, TTF_Font *font);
+void updatePlayerScore(int newScore);
+void renderButton(SDL_Renderer *renderer, TTF_Font *font, Button button);
+int handleButtonClick(Button button, int x, int y);
+void renderLoginScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *password, int usernameSelected);
+void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *password, int *usernameSelected, int client_fd);
 
-    extern ShapeList shapeList;
-
-
-
-    void initShapeList();
-    void generateShapes(int number);
-
-    typedef struct {
-        char name[20];
-        int score;
-    } LeaderboardEntry;
-
-    extern Shape current;
-
-    extern LeaderboardEntry leaderboard[5];
-    extern const int ShapesArray[7][4][4];
-
-    void drawBlock(SDL_Renderer *renderer, int x, int y, SDL_Color color);
-    Shape copyShape(const int shapeArray[4][4], int width);
-    void freeShape(Shape shape);
-    int checkPosition(Shape shape);
-    void newRandomShape();
-    void newRandomShape2();
-    void mergeShape();
-    void clearLines();
-    void moveShapeDown();
-    void rotateShape();
-    void handleEvents(int *quit);
-    void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font);
-    void renderGame(SDL_Renderer *renderer, TTF_Font *font);
-    void updatePlayerScore(int newScore);
-
-    #endif // TETRIS_GAME_H
+#endif // TETRIS_GAME_H
