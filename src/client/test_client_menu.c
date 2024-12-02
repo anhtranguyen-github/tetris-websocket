@@ -100,28 +100,63 @@ void create_room(int client_fd) {
 }
 
 
-// Function to handle room joining
 void join_room(int client_fd) {
+    char session_id[MAX_SESSION_ID];
+    char username[MAX_USERNAME];
     char room_name[MAX_ROOM_NAME];
+
+    // Prompt user for session ID, username, and room name
+    printf("Enter session ID: ");
+    scanf("%s", session_id);
+
+    printf("Enter your username: ");
+    scanf("%s", username);
+
     printf("Enter room name to join: ");
     scanf("%s", room_name);
 
-    Message msg = {JOIN_ROOM, "", "", ""};
+    // Create the JOIN_ROOM message
+    Message msg = {0};
+    msg.type = JOIN_ROOM;
+    strncpy(msg.username, username, MAX_USERNAME);
     strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
+    snprintf(msg.data, BUFFER_SIZE, "%s|%s", session_id, room_name);
 
+    // Send JOIN_ROOM message to server
     send(client_fd, &msg, sizeof(Message), 0);
 
+    // Receive response from server
     Message response;
     recv(client_fd, &response, sizeof(Message), 0);
 
-    if (response.type == ROOM_JOINED) {
-        printf("Successfully joined room: %s\n", room_name);
-    } else if (response.type == ROOM_NOT_FOUND) {
-        printf("Failed to join room: %s\n", response.data);
-    } else {
-        printf("Unexpected response type: %d\n", response.type);
+    // Handle the response
+    switch (response.type) {
+        case ROOM_JOINED:
+            printf("Successfully joined room: %s\n", response.room_name);
+            printf("Server message: %s\n", response.data);
+            break;
+
+        case ROOM_NOT_FOUND:
+            printf("Failed to join room: %s\n", response.data);
+            break;
+
+        case ROOM_FULL:
+            printf("Room is full: %s\n", response.data);
+            break;
+
+        case GAME_ALREADY_STARTED:
+            printf("Game already started in room: %s\n", response.data);
+            break;
+        case JOIN_ROOM_FAILURE:
+            printf("Wtf happened but i do not know bruh: %s\n", response.data);
+            break;
+
+        default:
+            printf("Unexpected response type: %d\n", response.type);
+            break;
     }
 }
+
 
 // Function to handle disconnection
 void disconnect(int client_fd) {

@@ -11,6 +11,7 @@
 #include "../../config/client_config.h"
 #include "../ultis.h"  
 #include <uuid/uuid.h>  
+#include "database.h"
 
 int server_fd;
 void generateSessionID(char *sessionID);  
@@ -254,6 +255,102 @@ bool handleJoinRoom(PGconn* conn, const char* sessionID, const char* roomID) {
     PQclear(res);
     return success;
 }
+Message handle_join_room(Message *msg, PGconn *conn) {
+    Message response = {0};
+    char session_id[MAX_SESSION_ID], room_name[MAX_ROOM_NAME];
+    char query[BUFFER_SIZE];
+    PGresult *result;
+
+    write_to_log("Parsing message data to extract session_id and room_name.");
+    sscanf(msg->data, "%[^|]|%s", session_id, room_name);
+    write_to_log("Parsed session_id:");
+    write_to_log(session_id);
+    write_to_log("Parsed room_name:");
+    write_to_log(room_name);
+
+    // Check if the room exists
+    snprintf(query, BUFFER_SIZE,
+             "SELECT room_id, max_players, "
+             "(SELECT COUNT(*) FROM room_players WHERE room_id = rooms.room_id) AS current_players, "
+             "(SELECT status FROM games WHERE room_id = rooms.room_id ORDER BY start_time DESC LIMIT 1) AS game_status "
+             "FROM rooms WHERE room_name = '%s';",
+             room_name);
+    write_to_log("Executing query to check if room exists:");
+    write_to_log(query);
+    result = PQexec(conn, query);
+
+    if (PQntuples(result) == 0) {
+        write_to_log("Room not found.");
+        response.type = ROOM_NOT_FOUND;
+        snprintf(response.data, BUFFER_SIZE, "Room '%s' not found.", room_name);
+        PQclear(result);
+        return response;
+    }
+
+    int room_id = atoi(PQgetvalue(result, 0, 0));
+    int max_players = atoi(PQgetvalue(result, 0, 1));
+    int current_players = atoi(PQgetvalue(result, 0, 2));
+    int game_status = PQgetvalue(result, 0, 3) ? atoi(PQgetvalue(result, 0, 3)) : 0;
+
+    write_to_log("Room details fetched:");
+    write_to_log_int(room_id);
+    write_to_log_int(max_players);
+    write_to_log_int(current_players);
+    write_to_log_int(game_status);
+
+    PQclear(result);
+
+    // Check if the room is full
+    if (current_players >= max_players) {
+        write_to_log("Room is full.");
+        response.type = ROOM_FULL;
+        snprintf(response.data, BUFFER_SIZE, "Room '%s' is full.", room_name);
+        return response;
+    }
+
+    // Check if the game has already started
+    if (game_status == 1) {
+        write_to_log("Game in the room has already started.");
+        response.type = GAME_ALREADY_STARTED;
+        snprintf(response.data, BUFFER_SIZE, "Game in room '%s' has already started.", room_name);
+        return response;
+    }
+
+    // Add the player to the room
+    snprintf(query, BUFFER_SIZE,
+             "INSERT INTO room_players (room_id, user_id) "
+             "SELECT %d, user_id FROM users WHERE session_id = '%s';",
+             room_id, session_id);
+    write_to_log("Executing query to add player to room:");
+    write_to_log(query);
+    result = PQexec(conn, query);
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+        write_to_log("Failed to add player to room.");
+        write_to_log(PQerrorMessage(conn));  // Log the detailed error from PostgreSQL
+
+        response.type = JOIN_ROOM_FAILURE;
+        snprintf(response.data, BUFFER_SIZE, "Failed to join room '%s'.", room_name);
+        PQclear(result);
+        return response;
+    }
+
+    PQclear(result);
+    write_to_log("Player successfully added to room.");
+
+    // Construct the success response
+    response.type = ROOM_JOINED;
+    snprintf(response.data, BUFFER_SIZE, "Successfully joined room '%s'.", room_name);
+    strncpy(response.room_name, room_name, MAX_ROOM_NAME);
+    strncpy(response.username, msg->username, MAX_USERNAME);
+
+    write_to_log("Response constructed successfully:");
+    write_to_log(response.data);
+
+    return response;
+}
+
+
+
 
 // Periodically clean up expired sessions in the database
 void cleanupExpiredSessions(PGconn* conn) {
@@ -279,13 +376,7 @@ void handleClientRequest(int clientSocket, PGconn* conn) {
                 break;
 
             case JOIN_ROOM:
-                if (handleJoinRoom(conn, msg.data, msg.room_name)) {
-                    strcpy(response.data, "Room joined successfully!");
-                    response.type = ROOM_JOINED;
-                } else {
-                    strcpy(response.data, "Failed to join room. Room may not exist.");
-                    response.type = ROOM_NOT_FOUND;
-                }
+                response = handle_join_room(&msg, conn);
                 break;
 
             case DISCONNECT:

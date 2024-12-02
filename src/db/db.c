@@ -133,6 +133,7 @@ void create_tables(PGconn *conn) {
     execute_query(conn, create_games);
     execute_query(conn, create_game_scores);
     
+    
 }
 
 
