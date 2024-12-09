@@ -17,7 +17,7 @@ typedef enum {
     ROOM_LIST,
     ROOM_JOINED,
     GAME_START,
-    GAME_SCORE,
+    GAME_STATUS,
     DISCONNECT,
 // Broadcast when a new player joins
 } MessageType;
