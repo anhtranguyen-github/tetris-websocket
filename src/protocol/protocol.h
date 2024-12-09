@@ -7,6 +7,7 @@
 #define MAX_ROOM_NAME 32
 #define MAX_USERNAME 32
 #define BUFFER_SIZE 1000
+#define ROOM_PLAYER_BUFFER_SIZE 200
 #define MAX_SESSION_ID 40
 
 // Message types
@@ -28,5 +29,16 @@ typedef struct {
     char room_name[MAX_ROOM_NAME];
     char data[BUFFER_SIZE];
 } Message;
+
+typedef struct {
+    int room_id;
+    char room_name[MAX_ROOM_NAME];
+    int time_limit;
+    int brick_limit;
+    int max_players;
+    int current_players;
+    char room_players[ROOM_PLAYER_BUFFER_SIZE]; // List of player usernames, separated by commas
+} RoomInfo;
+
 
 #endif
