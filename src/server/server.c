@@ -27,10 +27,97 @@ typedef struct OnlineUser {
     struct sockaddr_in client_addr;     // Address information for the user
     time_t last_activity;               // Timestamp of the last activity (for timeouts)
     int is_authenticated;               // Boolean to track if the user is authenticated (1 = yes, 0 = no)
+
+
+    char ip_address[100]; 
+    int port;
+    char time_buffer[100];
+
+
+
+    int room_id;                       //newly added
+    int is_hosting;                     //newly added
 } OnlineUser;
-
-
 OnlineUser online_users[MAX_USERS];
+
+int find_empty_slot() {
+    for (int i = 0; i < MAX_USERS; i++) {
+        if (online_users[i].is_authenticated == 0) {
+            return i;
+        }
+    }
+    return -1; // No empty slot found
+}
+
+
+
+void write_to_log_OnlineUser() {
+    write_to_log("Writinggg......................");
+    char log_message[8192]; // Large buffer to store all online user info
+    char user_entry[512];   // Buffer for each user's details
+    strcpy(log_message, "Online Users Log:\n");
+    strcat(log_message, "---------------------------------------------------------------------------------------------------------------\n");
+    strcat(log_message, "| ID   | Username            | Session ID       | SocketFD  | IP Address    | Port  | Last Activity        | Authenticated |\n");
+    strcat(log_message, "---------------------------------------------------------------------------------------------------------------\n");
+
+    for (int i = 0; i < MAX_USERS; i++) {
+        if (online_users[i].is_authenticated) {
+            // Convert last activity time to readable format
+            char time_buffer[26];
+            struct tm *tm_info = localtime(&online_users[i].last_activity);
+            strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", tm_info);
+
+            // Get IP address as string
+            char ip_address[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(online_users[i].client_addr.sin_addr), ip_address, INET_ADDRSTRLEN);
+            int port = ntohs(online_users[i].client_addr.sin_port); // Get port number
+
+            // Format the user entry
+            snprintf(user_entry, sizeof(user_entry), 
+                "| %-4d | %-20s | %-15s | %-10d | %-15s | %-5d | %-20s | %-13s |\n", 
+                online_users[i].user_id, 
+                online_users[i].username, 
+                online_users[i].session_id, 
+                online_users[i].socket_fd, 
+                ip_address, 
+                port, 
+                time_buffer, 
+                online_users[i].is_authenticated ? "YES" : "NO"
+            );
+            strcat(log_message, user_entry);
+        }
+    }
+
+    strcat(log_message, "---------------------------------------------------------------------------------------------------------------\n");
+
+    // Write the final log message to the log file
+    write_to_log(log_message);
+}
+
+void add_online_user(int user_id, const char *username, const char *session_id, int socket_fd, struct sockaddr_in client_addr) {
+    int index = find_empty_slot();
+    if (index == -1) {
+        write_to_log("No empty slots for online users.");
+        return;
+    }
+    
+    OnlineUser *user = &online_users[index];
+    user->user_id = user_id;
+    strncpy(user->username, username, sizeof(user->username) - 1);
+    strncpy(user->session_id, session_id, sizeof(user->session_id) - 1);
+    user->socket_fd = socket_fd;
+    user->client_addr = client_addr;
+    user->last_activity = time(NULL); // Set current time as last activity
+    user->is_authenticated = 1; // User is authenticated
+
+    char log_message[256];
+    snprintf(log_message, sizeof(log_message), 
+        "User added to online users: [ID: %d, Username: %s, SessionID: %s, IP: %s, SocketFD: %d]",
+        user->user_id, user->username, user->session_id, inet_ntoa(client_addr.sin_addr), socket_fd);
+    write_to_log(log_message);
+}
+
+
 
 void generateSessionID(char *sessionID);  
 // Signal handler to clean up and close the server socket
@@ -124,6 +211,7 @@ void generateSessionID(char *sessionID) {
 }
 
 Message handle_login(const Message *msg, PGconn* conn) {
+    
     Message response;
     response.type = LOGIN_FAILURE;  // Default to failure
     write_to_log("1");
@@ -148,11 +236,56 @@ Message handle_login(const Message *msg, PGconn* conn) {
         // Invalid login
         strcpy(response.data, "Login failed!");
     }
-
+    write_to_log_OnlineUser();
     return response;
 }
 
 
+
+// Updated handle_login function
+Message handle_login2(const Message *msg, PGconn *conn, int socket_fd, struct sockaddr_in client_addr) {
+    write_to_log_OnlineUser();
+    Message response;
+    response.type = LOGIN_FAILURE; // Default to failure
+    write_to_log("1"); // Debug point
+
+    // Check if the username and password are valid
+    if (validateLogin(conn, msg->username, msg->data)) { // Assuming msg->data contains the password
+        // Login successful
+        response.type = LOGIN_SUCCESS;
+        strcpy(response.data, "Login successful!");
+        write_to_log("2: Login successful for user");
+
+        // Generate a session ID (simulating a cookie)
+        char sessionID[64];
+        generateSessionID(sessionID);
+        write_to_log("3: Session ID generated");
+
+        // Store the session in the database
+        if (createSession(conn, msg->username, sessionID, 30)) { // 30-minute expiry
+            write_to_log("4: Session created in database");
+
+            // Update response with the session ID
+            strncpy(response.data, sessionID, sizeof(response.data) - 1);
+
+            // Simulate user_id retrieval (could be from the DB)
+            int user_id = 1; // This should come from the users table (getUserID function)
+            
+            // Add the user to the `online_users` array
+            add_online_user(user_id, msg->username, sessionID, socket_fd, client_addr);
+        } else {
+            write_to_log("5: Failed to create session");
+            strcpy(response.data, "Failed to create session.");
+            response.type = LOGIN_FAILURE;
+        }
+    } else {
+        // Invalid login
+        write_to_log("6: Invalid login attempt");
+        strcpy(response.data, "Login failed!");
+    }
+
+    return response;
+}
 
 // Function to handle CREATE_ROOM message
 Message handle_create_room(Message* msg, PGconn* conn) {
@@ -570,12 +703,36 @@ void cleanupExpiredSessions(PGconn* conn) {
 void handleClientRequest(int clientSocket, PGconn* conn) {
     Message msg, response;
 
+
+
+    struct sockaddr_in client_addr;
+    socklen_t addr_len = sizeof(client_addr);
+
+    // Get client's IP address
+    getpeername(clientSocket, (struct sockaddr*)&client_addr, &addr_len);
+    char client_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+
+    char log_message[256];
+    snprintf(log_message, sizeof(log_message), 
+             "New client connected from IP: %s, SocketFD: %d", 
+             client_ip, clientSocket);
+    write_to_log(log_message);
+
+
+
+
+
     while (recv(clientSocket, &msg, sizeof(Message), 0) > 0) {
-        printf("Server received message of type %d from %s\n", msg.type, msg.username);
+        snprintf(log_message, sizeof(log_message), 
+                 "Server received message of type %d from user %s (IP: %s, SocketFD: %d)", 
+                 msg.type, msg.username, client_ip, clientSocket);
+        write_to_log(log_message);
 
         switch (msg.type) {
             case LOGIN:
-                response = handle_login(&msg, conn);  // Handle login and generate session (cookie)
+                response = handle_login2(&msg, conn, clientSocket, client_addr);
+                //response = handle_login(&msg, conn);  // Handle login and generate session (cookie)
                 break;
             case CREATE_ROOM:
                 // Call handle_create_room and get the response message
