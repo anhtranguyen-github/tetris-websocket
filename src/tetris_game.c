@@ -6,6 +6,7 @@
 #include <string.h>
 #include "tetris_game.h"
 #include "client_utils.h"
+#include "ultis.h"
 
 Shape current;
 ShapeList shapeList;
@@ -15,6 +16,8 @@ int score = 0;
 int GameOn = 1;
 int timer = 400;
 int decrease = 1;
+
+char session_id[MAX_SESSION_ID] = "";
 
 LeaderboardEntry leaderboard[LEADERBOARD_SIZE] = {
     {"Player1", 0},
@@ -351,6 +354,7 @@ void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_RenderPresent(renderer);
 }
 
+// TODO: Update the score to other player
 void updatePlayerScore(int newScore) {
     leaderboard[0].score = newScore;
 }
@@ -486,7 +490,7 @@ void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *passw
                     printf("Password: %s\n", password);
                 }
             } else if (key == SDLK_RETURN) {
-                if (send_login_request(client_fd, username, password)) {
+                if (send_login_request(client_fd, username, password, session_id)) {
                     *loginSuccess = 1;
                     printf("Login success.\n");
                 } else {
@@ -536,7 +540,7 @@ void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *passw
     }
 }
 
-void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *room_name, const char *session_id, int time_limit, int brick_limit, int max_player, int selectedField) {
+void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *room_name, int time_limit, int brick_limit, int max_player, int selectedField) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
@@ -650,7 +654,7 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
         return;
     }
     rect.x = SCREEN_WIDTH / 2 - 100;
-    rect.y = SCREEN_HEIGHT / 2 + 30;
+    rect.y = SCREEN_HEIGHT / 2 - 30;
     rect.w = surface->w;
     rect.h = surface->h;
     SDL_FreeSurface(surface);
@@ -659,11 +663,11 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
 
     // Render time limit input box
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_Rect timeLimitRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 60, 200, 30};
+    SDL_Rect timeLimitRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, 200, 30};
     SDL_RenderDrawRect(renderer, &timeLimitRect);
     char timeLimitText[12];
     snprintf(timeLimitText, sizeof(timeLimitText), "%d", time_limit);
-    SDL_Color timeLimitColor = selectedField == 3 ? white : gray;
+    SDL_Color timeLimitColor = selectedField == 2 ? white : gray;
     surface = TTF_RenderText_Solid(font, timeLimitText, timeLimitColor);
     if (!surface) {
         printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
@@ -696,7 +700,7 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
         return;
     }
     rect.x = SCREEN_WIDTH / 2 - 100;
-    rect.y = SCREEN_HEIGHT / 2 + 90;
+    rect.y = SCREEN_HEIGHT / 2 + 30;
     rect.w = surface->w;
     rect.h = surface->h;
     SDL_FreeSurface(surface);
@@ -705,11 +709,11 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
 
     // Render brick limit input box
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_Rect brickLimitRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 120, 200, 30};
+    SDL_Rect brickLimitRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 60, 200, 30};
     SDL_RenderDrawRect(renderer, &brickLimitRect);
     char brickLimitText[12];
     snprintf(brickLimitText, sizeof(brickLimitText), "%d", brick_limit);
-    SDL_Color brickLimitColor = selectedField == 4 ? white : gray;
+    SDL_Color brickLimitColor = selectedField == 3 ? white : gray;
     surface = TTF_RenderText_Solid(font, brickLimitText, brickLimitColor);
     if (!surface) {
         printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
@@ -742,7 +746,7 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
         return;
     }
     rect.x = SCREEN_WIDTH / 2 - 100;
-    rect.y = SCREEN_HEIGHT / 2 + 150;
+    rect.y = SCREEN_HEIGHT / 2 + 90;
     rect.w = surface->w;
     rect.h = surface->h;
     SDL_FreeSurface(surface);
@@ -751,11 +755,11 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
 
     // Render max player input box
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_Rect maxPlayerRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 180, 200, 30};
+    SDL_Rect maxPlayerRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 120, 200, 30};
     SDL_RenderDrawRect(renderer, &maxPlayerRect);
     char maxPlayerText[12];
     snprintf(maxPlayerText, sizeof(maxPlayerText), "%d", max_player);
-    SDL_Color maxPlayerColor = selectedField == 5 ? white : gray;
+    SDL_Color maxPlayerColor = selectedField == 4 ? white : gray;
     surface = TTF_RenderText_Solid(font, maxPlayerText, maxPlayerColor);
     if (!surface) {
         printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
@@ -778,8 +782,7 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
     SDL_RenderPresent(renderer);
 }
 
-
-void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, char *room_name, char *session_id, int *time_limit, int *brick_limit, int *max_player, int *selectedField, int client_fd) {
+void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, char *room_name, int *time_limit, int *brick_limit, int *max_player, int *selectedField, int client_fd) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
@@ -793,11 +796,11 @@ void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, c
                     username[strlen(username) - 1] = '\0';
                 } else if (*selectedField == 1 && strlen(room_name) > 0) {
                     room_name[strlen(room_name) - 1] = '\0';
-                } else if (*selectedField == 3 && *time_limit != TIME_LIMIT_UNLIMITED) {
+                } else if (*selectedField == 2 && *time_limit != TIME_LIMIT_UNLIMITED) {
                     *time_limit = *time_limit / 10;
-                } else if (*selectedField == 4 && *brick_limit != BRICK_LIMIT_UNLIMITED) {
+                } else if (*selectedField == 3 && *brick_limit != BRICK_LIMIT_UNLIMITED) {
                     *brick_limit = *brick_limit / 10;
-                } else if (*selectedField == 5 && *max_player > 0) {
+                } else if (*selectedField == 4 && *max_player > 0) {
                     *max_player = *max_player / 10;
                 }
             } else if (key == SDLK_RETURN) {
@@ -829,14 +832,142 @@ void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, c
                     strncat(username, &keyChar, 1);
                 } else if (*selectedField == 1 && strlen(room_name) < MAX_ROOM_NAME - 1) {
                     strncat(room_name, &keyChar, 1);
-                } else if (*selectedField == 3 && *time_limit < 1000000) {
+                } else if (*selectedField == 2 && *time_limit < 1000000) {
                     *time_limit = *time_limit * 10 + (key - SDLK_0);
-                } else if (*selectedField == 4 && *brick_limit < 1000000) {
+                } else if (*selectedField == 3 && *brick_limit < 1000000) {
                     *brick_limit = *brick_limit * 10 + (key - SDLK_0);
-                } else if (*selectedField == 5 && *max_player < 10) {
+                } else if (*selectedField == 4 && *max_player < 10) {
                     *max_player = *max_player * 10 + (key - SDLK_0);
                 }
             }
         }
     }
+}
+
+void handleJoinRoomEvents(int *quit, int *joinRoomSuccess, char *username, char *room_name, int client_fd) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode key = e.key.keysym.sym;
+            if (key == SDLK_RETURN) {
+                if (join_room(client_fd, username, room_name, session_id)) {
+                    *joinRoomSuccess = 1;
+                    printf("Join room success.\n");
+                } else {
+                    printf("Join room failed.\n");
+                }
+            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
+                char keyChar = (char)key;
+                if (strlen(username) < MAX_USERNAME - 1) {
+                    strncat(username, &keyChar, 1);
+                } else if (strlen(room_name) < MAX_ROOM_NAME - 1) {
+                    strncat(room_name, &keyChar, 1);
+                } 
+            }
+        }
+    }
+}
+
+void handleJoinRandomRoomEvents(int *quit, int *joinRoomSuccess, char *username, int client_fd, Message *response) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+            write_to_log("Event: SDL_QUIT");
+        } else if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode key = e.key.keysym.sym;
+            write_to_log("Event: SDL_KEYDOWN");
+            write_to_log_int(key);
+            if (key == SDLK_RETURN) {
+                write_to_log("Key: SDLK_RETURN");
+                if (join_random_room(client_fd, username, session_id)) {
+                    *joinRoomSuccess = 1;
+                    write_to_log("Join random room success.");
+                    recv(client_fd, response, sizeof(Message), 0);
+                } else {
+                    write_to_log("Join random room failed.");
+                }
+            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
+                char keyChar = (char)key;
+                write_to_log("Key: Character input");
+                write_to_log_int(keyChar);
+                if (strlen(username) < MAX_USERNAME - 1) {
+                    strncat(username, &keyChar, 1);
+                    write_to_log("Username updated:");
+                    write_to_log(username);
+                }
+            }
+        }
+    }
+}
+
+void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Surface *surface;
+    SDL_Texture *texture;
+    SDL_Rect rect;
+    char buffer[256];
+
+    // Render room name
+    snprintf(buffer, sizeof(buffer), "Room Name: %s", room_name);
+    surface = TTF_RenderText_Solid(font, buffer, white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.x = 50;
+    rect.y = 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render time limit
+    snprintf(buffer, sizeof(buffer), "Time Limit: %d", time_limit);
+    surface = TTF_RenderText_Solid(font, buffer, white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.y += 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render brick limit
+    snprintf(buffer, sizeof(buffer), "Brick Limit: %d", brick_limit);
+    surface = TTF_RenderText_Solid(font, buffer, white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.y += 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render max players
+    snprintf(buffer, sizeof(buffer), "Max Players: %d", max_players);
+    surface = TTF_RenderText_Solid(font, buffer, white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.y += 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render room players
+    snprintf(buffer, sizeof(buffer), "Room Players: %s", room_players);
+    surface = TTF_RenderText_Solid(font, buffer, white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.y += 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    SDL_RenderPresent(renderer);
 }

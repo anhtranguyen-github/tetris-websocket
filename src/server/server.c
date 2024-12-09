@@ -14,9 +14,6 @@
 #include "database.h"
 
 
-
-
-
 int server_fd;
 void generateSessionID(char *sessionID);  
 // Signal handler to clean up and close the server socket
@@ -243,7 +240,6 @@ Message handle_create_room(Message* msg, PGconn* conn) {
     // Return the Message struct with the appropriate response
     return response;
 }
-
 
 // Handle joining an existing room
 bool handleJoinRoom(PGconn* conn, const char* sessionID, const char* roomID) {
