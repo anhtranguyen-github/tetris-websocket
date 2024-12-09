@@ -18,6 +18,20 @@
 
 
 int server_fd;
+
+typedef struct OnlineUser {
+    int user_id;                          // Unique ID of the user (from database)
+    char username[MAX_USERNAME];     // Username (max length 50)
+    char session_id[MAX_SESSION_ID]; // Session ID (max length 255)
+    int socket_fd;                       // File descriptor for the user's socket
+    struct sockaddr_in client_addr;     // Address information for the user
+    time_t last_activity;               // Timestamp of the last activity (for timeouts)
+    int is_authenticated;               // Boolean to track if the user is authenticated (1 = yes, 0 = no)
+} OnlineUser;
+
+
+OnlineUser online_users[MAX_USERS];
+
 void generateSessionID(char *sessionID);  
 // Signal handler to clean up and close the server socket
 void handle_signal(int sig) {
@@ -538,6 +552,9 @@ Message handle_join_random_room(Message *msg, PGconn *conn) {
 free(room_info);
     return response;
 }
+Message handle_start_game(Message *msg, PGconn *conn) {
+
+}
 
 
 
@@ -571,6 +588,9 @@ void handleClientRequest(int clientSocket, PGconn* conn) {
             
             case JOIN_RANDOM:
                 response = handle_join_random_room(&msg, conn);
+                break;
+            case START_GAME:
+                response = handle_start_game(&msg, conn);
                 break;
 
             case DISCONNECT:
