@@ -6,6 +6,7 @@
 #include <string.h>
 #include "tetris_game.h"
 #include "protocol/network.h"
+#include "protocol/protocol.h"
 
 #define SCREEN_WIDTH  800  // or whatever value you need
 #define SCREEN_HEIGHT 600  // or whatever value you need
@@ -77,9 +78,17 @@ int main() {
 
     char username[MAX_USERNAME] = "";
     char password[MAX_PASSWORD] = "";
+    char room_name[255] = "";
+    int time_limit = 0;
+    int brick_limit = 0;
+    int max_player = 8;
     int usernameSelected = 1;
     int loginSuccess = 0;
     int quit = 0;
+    int createRoomSuccess = 0;
+    int joinRoomSuccess = 0;
+    int selectedField = 0;
+
 
     while (!quit && !loginSuccess) {
         handleLoginEvents(&quit, &loginSuccess, username, password, &usernameSelected, client_fd);
@@ -113,11 +122,29 @@ int main() {
                             // Handle button actions here
                             if (strcmp(buttons[i].text, "Create Room") == 0) {
                                 // Handle create room
+                                while (!quit && !createRoomSuccess) {
+                                    handleCreateRoomEvents(&quit, &createRoomSuccess, username, room_name, &time_limit, &brick_limit, &max_player, &selectedField, client_fd);
+                                    renderCreateRoomScreen(renderer, font, username, room_name, time_limit, brick_limit, max_player, selectedField);
+                                }
                             } else if (strcmp(buttons[i].text, "Join Room") == 0) {
                                 // Handle join room
                             } else if (strcmp(buttons[i].text, "Quick Join") == 0) {
                                 // Handle quick join
-                                inGame = 1;
+                                Message response;
+                                while (!quit && !joinRoomSuccess) {
+                                    handleJoinRandomRoomEvents(&quit, &joinRoomSuccess, username, client_fd, &response);
+                                }
+                                if (joinRoomSuccess) {
+                                    char room_name[MAX_ROOM_NAME];
+                                    int time_limit, brick_limit, max_players;
+                                    char room_players[ROOM_PLAYER_BUFFER_SIZE];
+                            
+                                    // Parse the response data to extract room details
+                                    sscanf(response.data, "%[^|]|%d|%d|%d|%[^\n]", room_name, &time_limit, &brick_limit, &max_players, room_players);
+                            
+                                    // Render the waiting room screen
+                                    renderWaitingRoom(renderer, font, room_name, time_limit, brick_limit, max_players, room_players);
+                                }
                             }
                         }
                     }
@@ -127,7 +154,7 @@ int main() {
             if (inGame) {
                 int quit = 0;
                 int lastTime = SDL_GetTicks();
-                while (GameOn && ! quit) {
+                while (GameOn && !quit) {
                     int currentTime = SDL_GetTicks();
                     if (currentTime - lastTime > timer) {
                         moveShapeDown();
