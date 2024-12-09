@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# gcc main.c tetris_game.c client_utils.c -o game.o -lSDL2 -lSDL2_ttf
+
 # Set the project root directory
 PROJECT_ROOT=$(pwd)
 

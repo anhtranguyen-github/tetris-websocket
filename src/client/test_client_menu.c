@@ -43,7 +43,7 @@ void login(int client_fd) {
     }
 }
 
-
+// Create room should use generate sessionId from server?
 void create_room(int client_fd) {
     char room_name[MAX_ROOM_NAME];
     char session_id[MAX_SESSION_ID];
