@@ -24,6 +24,19 @@ void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int bu
 
 const char *server_ip = "127.0.0.1";
 
+typedef enum {
+    MENU_SCREEN,
+    WAITING_ROOM_SCREEN,
+    GAME_SCREEN
+} ScreenState;
+
+char currentRoomName[MAX_ROOM_NAME];
+int currentTimeLimit;
+int currentBrickLimit;
+int currentMaxPlayers;
+char currentRoomPlayers[BUFFER_SIZE];
+ScreenState currentScreen;
+
 int main() {
     int client_fd = create_client_socket(server_ip);
     if (client_fd < 0) {
@@ -96,6 +109,7 @@ int main() {
     }
 
     if (loginSuccess) {
+        currentScreen = MENU_SCREEN;
         Button buttons[3] = {
             {{SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 100, 200, 50}, {0, 0, 255, 255}, "Create Room"},
             {{SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, 200, 50}, {0, 255, 0, 255}, "Join Room"},
@@ -113,7 +127,7 @@ int main() {
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_QUIT) {
                     quit = 1;
-                } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                } else if (e.type == SDL_MOUSEBUTTONDOWN && currentScreen == MENU_SCREEN) {
                     int x, y;
                     SDL_GetMouseState(&x, &y);
                     for (int i = 0; i < 3; i++) {
@@ -126,46 +140,41 @@ int main() {
                                     handleCreateRoomEvents(&quit, &createRoomSuccess, username, room_name, &time_limit, &brick_limit, &max_player, &selectedField, client_fd);
                                     renderCreateRoomScreen(renderer, font, username, room_name, time_limit, brick_limit, max_player, selectedField);
                                 }
+
                             } else if (strcmp(buttons[i].text, "Join Room") == 0) {
                                 // Handle join room
+
                             } else if (strcmp(buttons[i].text, "Quick Join") == 0) {
                                 // Handle quick join
-                                Message response;
-                                while (!quit && !joinRoomSuccess) {
-                                    handleJoinRandomRoomEvents(&quit, &joinRoomSuccess, username, client_fd, &response);
-                                }
+                                int joinRoomSuccess = 0;
+                                char username[MAX_USERNAME] = "";  // Initialize or load a predefined username
+                                Message response = {0};           // To store server's response
+
+                                handleJoinRandomRoomEvents(&quit, &joinRoomSuccess, username, client_fd, &response);
+
                                 if (joinRoomSuccess) {
-                                    char room_name[MAX_ROOM_NAME];
-                                    int time_limit, brick_limit, max_players;
-                                    char room_players[ROOM_PLAYER_BUFFER_SIZE];
-                            
-                                    // Parse the response data to extract room details
-                                    sscanf(response.data, "%[^|]|%d|%d|%d|%[^\n]", room_name, &time_limit, &brick_limit, &max_players, room_players);
-                            
-                                    // Render the waiting room screen
-                                    renderWaitingRoom(renderer, font, room_name, time_limit, brick_limit, max_players, room_players);
+                                    // Parse the response and enter the waiting room
+                                    sscanf(response.data, "%[^|]|%d|%d|%d|%[^|]",
+                                       currentRoomName, &currentTimeLimit, &currentBrickLimit, 
+                                       &currentMaxPlayers, currentRoomPlayers);
+                                    printf("Joined Room: %s\n", currentRoomName);
+                                    printf("Time Limit: %d, Brick Limit: %d, Max Players: %d\n", currentTimeLimit, currentBrickLimit, currentMaxPlayers);
+                                    printf("Room Players: %s\n", currentRoomPlayers);
+
+                                    // Update screen state
+                                    currentScreen = WAITING_ROOM_SCREEN;            
                                 }
                             }
                         }
                     }
                 }
             }
-
-            if (inGame) {
-                int quit = 0;
-                int lastTime = SDL_GetTicks();
-                while (GameOn && !quit) {
-                    int currentTime = SDL_GetTicks();
-                    if (currentTime - lastTime > timer) {
-                        moveShapeDown();
-                        lastTime = currentTime;
-                    }
-                    handleEvents(&quit);
-                    renderGame(renderer, font);
-                }
-                
-            } else {
+            if (currentScreen == MENU_SCREEN) {
                 renderMenu(renderer, font, buttons, 3);
+            } else if (currentScreen == WAITING_ROOM_SCREEN) {
+                renderWaitingRoom(renderer, font, currentRoomName, currentTimeLimit, currentBrickLimit, currentMaxPlayers, currentRoomPlayers);
+            } else if (currentScreen == GAME_SCREEN) {
+                renderGame(renderer, font);
             }
         }
     }

@@ -69,35 +69,31 @@ int join_room(int client_fd, const char *username, const char *room_name, const 
     return 0;
 }
 
-int join_random_room(int client_fd, const char *username, const char *session_id) {
+int join_random_room(int client_fd, const char *username, const char *session_id, Message *response) {
     Message msg = {JOIN_RANDOM, "", "", ""};
     strncpy(msg.username, username, MAX_USERNAME);
     snprintf(msg.data, BUFFER_SIZE, "%s", session_id);
 
     send(client_fd, &msg, sizeof(Message), 0);
 
-    Message response;
-    int bytes_received = recv(client_fd, &response, sizeof(Message), 0);
+    int bytes_received = recv(client_fd, response, sizeof(Message), 0);
 
     if (bytes_received <= 0) {
         printf("Error receiving response from server.\n");
         return 0;
     }
 
-    switch (response.type) {
-        case ROOM_JOINED:
-            printf("Successfully joined random room: %s\n", response.room_name);
-            printf("Server message: %s\n", response.data);
-            return 1;
-        case ROOM_NOT_FOUND:
-            printf("Failed to join a random room: %s\n", response.data);
-            break;
-        case JOIN_ROOM_FAILURE:
-            printf("Unexpected error occurred while joining a random room: %s\n", response.data);
-            break;
-        default:
-            printf("Unexpected response type: %d\n", response.type);
-            break;
+    if (response->type == ROOM_JOINED) {
+        printf("Successfully joined random room: %s\n", response->room_name);
+        printf("Server message: %s\n", response->data);
+        return 1;
+    } else if (response->type == ROOM_NOT_FOUND) {
+        printf("Failed to join a random room: %s\n", response->data);
+    } else if (response->type == JOIN_ROOM_FAILURE) {
+        printf("Unexpected error occurred while joining a random room: %s\n", response->data);
+    } else {
+        printf("Unexpected response type: %d\n", response->type);
     }
+
     return 0;
 }

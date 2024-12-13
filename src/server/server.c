@@ -678,9 +678,11 @@ Message handle_join_random_room(Message *msg, PGconn *conn) {
 
     write_to_log("Response constructed successfully:");
     write_to_log(response.data);
+    write_to_log_int(response.type);
 free(room_info);
     return response;
 }
+
 Message handle_start_game(Message *msg, PGconn *conn) {
 
 }

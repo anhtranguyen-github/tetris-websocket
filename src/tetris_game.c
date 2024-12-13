@@ -871,36 +871,17 @@ void handleJoinRoomEvents(int *quit, int *joinRoomSuccess, char *username, char 
 }
 
 void handleJoinRandomRoomEvents(int *quit, int *joinRoomSuccess, char *username, int client_fd, Message *response) {
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) {
-            *quit = 1;
-            write_to_log("Event: SDL_QUIT");
-        } else if (e.type == SDL_KEYDOWN) {
-            SDL_Keycode key = e.key.keysym.sym;
-            write_to_log("Event: SDL_KEYDOWN");
-            write_to_log_int(key);
-            if (key == SDLK_RETURN) {
-                write_to_log("Key: SDLK_RETURN");
-                if (join_random_room(client_fd, username, session_id)) {
-                    *joinRoomSuccess = 1;
-                    write_to_log("Join random room success.");
-                    recv(client_fd, response, sizeof(Message), 0);
-                } else {
-                    write_to_log("Join random room failed.");
-                }
-            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
-                char keyChar = (char)key;
-                write_to_log("Key: Character input");
-                write_to_log_int(keyChar);
-                if (strlen(username) < MAX_USERNAME - 1) {
-                    strncat(username, &keyChar, 1);
-                    write_to_log("Username updated:");
-                    write_to_log(username);
-                }
-            }
+     if (!*joinRoomSuccess) {
+        write_to_log("Sending join random room request...");
+        
+        if (join_random_room(client_fd, username, session_id, response)) {
+            *joinRoomSuccess = 1;  // Successfully joined a room
+            write_to_log("Successfully joined a random room.");
+        } else {
+            write_to_log("Failed to join a random room.");
+            *quit = 1;  // Exit on failure
         }
-    }
+     }
 }
 
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players) {
