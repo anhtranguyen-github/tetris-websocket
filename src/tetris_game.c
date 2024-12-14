@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <pthread.h>
 #include "tetris_game.h"
 #include "client_utils.h"
 #include "ultis.h"
@@ -110,10 +111,13 @@ Shape copyShape(const int shapeArray[4][4], int width) {
 }
 
 void freeShape(Shape shape) {
-    for (int i = 0; i < shape.width; i++) {
-        free(shape.array[i]);
+    if (shape.array != NULL) {
+        for (int i = 0; i < shape.width; i++) {
+            free(shape.array[i]);
+        }
+        free(shape.array);
+        shape.array = NULL;
     }
-    free(shape.array);
 }
 
 int checkPosition(Shape shape) {
@@ -950,5 +954,38 @@ void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_
     SDL_RenderCopy(renderer, texture, NULL, &rect);
     SDL_DestroyTexture(texture);
 
+    // Start room message
+    snprintf(buffer, sizeof(buffer), "Press Enter to start the game!");
+    surface = TTF_RenderText_Solid(font, buffer, white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.y += 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
     SDL_RenderPresent(renderer);
 }
+
+void handleWaitingRoomEvents(int *quit, int *startGame) {
+    SDL_Event e;
+    write_to_log("Enter handle Wait Room...");
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode key = e.key.keysym.sym;
+            switch (key)
+            {
+            case SDLK_RETURN:
+                *startGame = 1;
+                break;
+            default:
+                write_to_log_int(key);
+                break;
+            }
+        }
+    }
+}
+

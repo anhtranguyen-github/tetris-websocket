@@ -3,7 +3,7 @@
 # run script: dos2unix build_project.sh
 # start db: sudo service postgresql start
 # enter db: sudo -i -u postgres psql > \c tetris
-# gcc main.c tetris_game.c client_utils.c ultis.c -o game.o -lSDL2 -lSDL2_ttf
+# gcc main.c tetris_game.c client_utils.c ultis.c -o game.o -lSDL2 -lSDL2_ttf -lpthread
 
 # Set the project root directory
 PROJECT_ROOT=$(pwd)
