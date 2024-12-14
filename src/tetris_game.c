@@ -21,11 +21,14 @@ int decrease = 1;
 char session_id[MAX_SESSION_ID] = "";
 
 LeaderboardEntry leaderboard[LEADERBOARD_SIZE] = {
-    {"Player1", 0},
-    {"Player2", 0},
-    {"Player3", 0},
-    {"Player4", 0},
-    {"Player5", 0}
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0}
 };
 
 const int ShapesArray[7][4][4] = {
@@ -268,15 +271,32 @@ void handleEvents(int *quit) {
     }
 }
 
-void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
+void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers) {
     SDL_Color white = {255, 255, 255};
     SDL_Surface *surface;
     SDL_Texture *texture;
     SDL_Rect rect;
     char buffer[50];
 
-    // Render each leaderboard entry
     for (int i = 0; i < LEADERBOARD_SIZE; i++) {
+        strncpy(leaderboard[i].name, "", sizeof(leaderboard[i].name));
+    }
+
+    char playersCopy[ROOM_PLAYER_BUFFER_SIZE];
+    strncpy(playersCopy, roomPlayers, sizeof(playersCopy));
+    playersCopy[sizeof(playersCopy) - 1] = '\0';  // Ensure null-terminated string
+    char *token = strtok(playersCopy, ",");
+    int index = 0;
+
+    while (token != NULL && index < LEADERBOARD_SIZE) {
+        strncpy(leaderboard[index].name, token, sizeof(leaderboard[index].name));
+        leaderboard[index].name[sizeof(leaderboard[index].name) - 1] = '\0';  // Ensure null-termination
+        token = strtok(NULL, ",");
+        index++;
+    }
+
+    // Render each leaderboard entry
+    for (int i = 0; i < index; i++) {
         snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
         surface = TTF_RenderText_Solid(font, buffer, white);
         texture = SDL_CreateTextureFromSurface(renderer, surface);
@@ -302,7 +322,7 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
 
     SDL_Color shapeColor = {255, 255, 0}; // Yellow color for the next shape
     int shapeStartX = SCREEN_WIDTH - 250; // Position to render next shape
-    int shapeStartY = 200;
+    int shapeStartY = 450;
 
     for (int i = 0; i < nextShape.width; i++) {
         for (int j = 0; j < nextShape.width; j++) {
@@ -320,7 +340,7 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
     }
 }
 
-void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
+void renderGame(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers) {
     SDL_Color colors[] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};
     
     // Clear the screen
@@ -352,7 +372,7 @@ void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_RenderDrawLine(renderer, SCREEN_WIDTH - 350, 0, SCREEN_WIDTH - 350, SCREEN_HEIGHT);
 
     // Render the leaderboard
-    renderLeaderboard(renderer, font);
+    renderLeaderboard(renderer, font, roomPlayers);
 
     // Present the rendered frame
     SDL_RenderPresent(renderer);

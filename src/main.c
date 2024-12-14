@@ -93,21 +93,37 @@ void handleServerMessages(int client_fd) {
 
 */
 
-void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window) {
+void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers) {
     initShapeList();
-    generateShapes(100);
+    generateShapes(brick_limit);
     newRandomShape2();
 
     // Main game loop
     int lastTime = SDL_GetTicks();
+    int startTime = lastTime;
+    int brickPlaced = 0;
+
     while (GameOn && !quit) {
         int currentTime = SDL_GetTicks();
+        //Check time limit
+        if ((currentTime - startTime) / 1000 >= time_limit) {
+            printf("Time limit reached!\n");
+            break;
+        }
+
+        // Check block limit
+        if (brickPlaced >= brick_limit) {
+            printf("Brick limit reached!\n");
+            break;
+        }
+
         if (currentTime - lastTime > timer) {
             moveShapeDown();
+            brickPlaced++;
             lastTime = currentTime;
         }
         handleEvents(&quit);
-        renderGame(renderer, font);
+        renderGame(renderer, font, roomPlayers);
     }
 
     // Cleanup
@@ -283,7 +299,7 @@ int main() {
                     currentScreen = GAME_SCREEN;
                 }
             } else if (currentScreen == GAME_SCREEN) {
-                startTetrisGame(renderer, font, window);
+                startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers);
             }
         }
     }
