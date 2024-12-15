@@ -4,8 +4,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include "protocol/protocol.h"
+#include "ultis.h"  
 
-#define LEADERBOARD_SIZE 5
+#define LEADERBOARD_SIZE 8
 #define BLOCK_SIZE 30
 #define COLS 15
 #define ROWS 20
@@ -45,7 +46,7 @@ typedef struct {
 
 extern Shape current;
 extern ShapeList shapeList;
-extern LeaderboardEntry leaderboard[5];
+extern LeaderboardEntry leaderboard[LEADERBOARD_SIZE];
 extern const int ShapesArray[7][4][4];
 
 void initShapeList();
@@ -61,8 +62,8 @@ void clearLines();
 void moveShapeDown();
 void rotateShape();
 void handleEvents(int *quit);
-void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font);
-void renderGame(SDL_Renderer *renderer, TTF_Font *font);
+void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers);
+void renderGame(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers);
 void updatePlayerScore(int newScore);
 void renderButton(SDL_Renderer *renderer, TTF_Font *font, Button button);
 int handleButtonClick(Button button, int x, int y);
@@ -73,5 +74,6 @@ void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, c
 void handleJoinRoomEvents(int *quit, int *joinRoomSuccess, char *username, char *room_name, int client_fd);
 void handleJoinRandomRoomEvents(int *quit, int *joinRoomSuccess, char *username, int client_fd, Message *response);
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players);
+void handleWaitingRoomEvents(int *quit, int *startGame);
 
 #endif // TETRIS_GAME_H

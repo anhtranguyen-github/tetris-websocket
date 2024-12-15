@@ -7,9 +7,12 @@
 #include "tetris_game.h"
 #include "protocol/network.h"
 #include "protocol/protocol.h"
+#include "ultis.h"
 
 #define SCREEN_WIDTH  800  // or whatever value you need
 #define SCREEN_HEIGHT 600  // or whatever value you need
+
+int quit = 0;
 
 void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -23,6 +26,131 @@ void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int bu
 }
 
 const char *server_ip = "127.0.0.1";
+
+typedef enum {
+    MENU_SCREEN,
+    WAITING_ROOM_SCREEN,
+    GAME_SCREEN
+} ScreenState;
+
+char currentRoomName[MAX_ROOM_NAME];
+int currentTimeLimit;
+int currentBrickLimit;
+int currentMaxPlayers;
+char currentRoomPlayers[BUFFER_SIZE];
+ScreenState currentScreen;
+
+
+/*
+void* serverMessageThread(void* arg) {
+    int client_fd = *((int*)arg);
+    handleServerMessages(client_fd);
+    return NULL;
+}
+
+void handleServerMessages(int client_fd) {
+    Message response;
+    while (1) {
+        int bytes_received = recv(client_fd, &response, sizeof(Message), 0);
+        if (bytes_received <= 0) {
+            printf("Error receiving message from server.\n");
+            break;
+        }
+
+        switch (response.type) {
+            case ROOM_JOINED:
+                printf("Successfully joined room: %s\n", response.room_name);
+                printf("Server message: %s\n", response.data);
+                // Update screen state and render waiting room
+                sscanf(response.data, "%[^|]|%d|%d|%d|%[^|]",
+                       currentRoomName, &currentTimeLimit, &currentBrickLimit, 
+                       &currentMaxPlayers, currentRoomPlayers);
+                currentScreen = WAITING_ROOM_SCREEN;
+                break;
+
+            case JOIN_ROOM_FAILURE:
+                printf("Failed to join room: %s\n", response.data);
+                break;
+
+            case ROOM_NOT_FOUND:
+                printf("Room not found: %s\n", response.data);
+                break;
+
+            case ROOM_FULL:
+                printf("Room is full: %s\n", response.data);
+                break;
+
+            case GAME_ALREADY_STARTED:
+                printf("Game already started in room: %s\n", response.data);
+                break;
+
+            default:
+                printf("Unexpected response type: %d\n", response.type);
+                break;
+        }
+    }
+}
+
+*/
+
+void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers) {
+    initShapeList();
+    generateShapes(brick_limit);
+    newRandomShape2();
+
+    // Main game loop
+    int lastTime = SDL_GetTicks();
+    int startTime = lastTime;
+    int brickPlaced = 0;
+
+    while (GameOn && !quit) {
+        int currentTime = SDL_GetTicks();
+        //Check time limit
+        if ((currentTime - startTime) / 1000 >= time_limit) {
+            printf("Time limit reached!\n");
+            break;
+        }
+
+        // Check block limit
+        if (brickPlaced >= brick_limit) {
+            printf("Brick limit reached!\n");
+            break;
+        }
+
+        if (currentTime - lastTime > timer) {
+            moveShapeDown();
+            brickPlaced++;
+            lastTime = currentTime;
+        }
+        handleEvents(&quit);
+        renderGame(renderer, font, roomPlayers);
+    }
+
+    // Cleanup
+    if (renderer) {
+        SDL_DestroyRenderer(renderer);
+        printf("Rendere destroyed.\n");
+    }
+    if (window) {
+        SDL_DestroyWindow(window);
+        printf("Window destroyed.\n");
+
+    }
+    if (font) {
+        TTF_CloseFont(font);
+        printf("Font closed.\n");
+
+    }
+    TTF_Quit();
+    SDL_Quit();
+    freeShape(current);
+    printf("Shape freed.\n");
+
+
+    // Print final score
+    printf("Game Over! Final Score: %d\n", score);
+}
+
 
 int main() {
     int client_fd = create_client_socket(server_ip);
@@ -84,9 +212,8 @@ int main() {
     int max_player = 8;
     int usernameSelected = 1;
     int loginSuccess = 0;
-    int quit = 0;
     int createRoomSuccess = 0;
-    int joinRoomSuccess = 0;
+    //int joinRoomSuccess = 0;
     int selectedField = 0;
 
 
@@ -95,25 +222,30 @@ int main() {
         renderLoginScreen(renderer, font, username, password, usernameSelected);
     }
 
+    /*
+    pthread_t tid;
+    if (pthread_create(&tid, NULL, serverMessageThread, &client_fd) != 0) {
+        perror("Failed to create server message thread");
+        close(client_fd);
+        exit(EXIT_FAILURE);
+    }
+    */
+
     if (loginSuccess) {
+        currentScreen = MENU_SCREEN;
         Button buttons[3] = {
             {{SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 100, 200, 50}, {0, 0, 255, 255}, "Create Room"},
             {{SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, 200, 50}, {0, 255, 0, 255}, "Join Room"},
             {{SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 100, 200, 50}, {255, 0, 0, 255}, "Quick Join"}
         };
         
-        int inGame = 0;
-
-        initShapeList();
-        generateShapes(100);
-        newRandomShape2();
 
         while (!quit) {
             SDL_Event e;
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_QUIT) {
                     quit = 1;
-                } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                } else if (e.type == SDL_MOUSEBUTTONDOWN && currentScreen == MENU_SCREEN) {
                     int x, y;
                     SDL_GetMouseState(&x, &y);
                     for (int i = 0; i < 3; i++) {
@@ -126,54 +258,50 @@ int main() {
                                     handleCreateRoomEvents(&quit, &createRoomSuccess, username, room_name, &time_limit, &brick_limit, &max_player, &selectedField, client_fd);
                                     renderCreateRoomScreen(renderer, font, username, room_name, time_limit, brick_limit, max_player, selectedField);
                                 }
+
                             } else if (strcmp(buttons[i].text, "Join Room") == 0) {
                                 // Handle join room
+
                             } else if (strcmp(buttons[i].text, "Quick Join") == 0) {
                                 // Handle quick join
-                                Message response;
-                                while (!quit && !joinRoomSuccess) {
-                                    handleJoinRandomRoomEvents(&quit, &joinRoomSuccess, username, client_fd, &response);
-                                }
+                                int joinRoomSuccess = 0;
+                                char username[MAX_USERNAME] = "";  // Initialize or load a predefined username
+                                Message response = {0};           // To store server's response
+
+                                handleJoinRandomRoomEvents(&quit, &joinRoomSuccess, username, client_fd, &response);
+
                                 if (joinRoomSuccess) {
-                                    char room_name[MAX_ROOM_NAME];
-                                    int time_limit, brick_limit, max_players;
-                                    char room_players[ROOM_PLAYER_BUFFER_SIZE];
-                            
-                                    // Parse the response data to extract room details
-                                    sscanf(response.data, "%[^|]|%d|%d|%d|%[^\n]", room_name, &time_limit, &brick_limit, &max_players, room_players);
-                            
-                                    // Render the waiting room screen
-                                    renderWaitingRoom(renderer, font, room_name, time_limit, brick_limit, max_players, room_players);
+                                    // Parse the response and enter the waiting room
+                                    sscanf(response.data, "%[^|]|%d|%d|%d|%[^|]",
+                                       currentRoomName, &currentTimeLimit, &currentBrickLimit, 
+                                       &currentMaxPlayers, currentRoomPlayers);
+                                    printf("Joined Room: %s\n", currentRoomName);
+                                    printf("Time Limit: %d, Brick Limit: %d, Max Players: %d\n", currentTimeLimit, currentBrickLimit, currentMaxPlayers);
+                                    printf("Room Players: %s\n", currentRoomPlayers);
+
+                                    // Update screen state
+                                    currentScreen = WAITING_ROOM_SCREEN;            
                                 }
                             }
                         }
                     }
-                }
+                } 
             }
-
-            if (inGame) {
-                int quit = 0;
-                int lastTime = SDL_GetTicks();
-                while (GameOn && !quit) {
-                    int currentTime = SDL_GetTicks();
-                    if (currentTime - lastTime > timer) {
-                        moveShapeDown();
-                        lastTime = currentTime;
-                    }
-                    handleEvents(&quit);
-                    renderGame(renderer, font);
-                }
-                
-            } else {
+            if (currentScreen == MENU_SCREEN) {
                 renderMenu(renderer, font, buttons, 3);
+            } else if (currentScreen == WAITING_ROOM_SCREEN) {
+                write_to_log("Into the wait room...");
+                int startGame = 0;
+                handleWaitingRoomEvents(&quit, &startGame);
+                renderWaitingRoom(renderer, font, currentRoomName, currentTimeLimit, currentBrickLimit, currentMaxPlayers, currentRoomPlayers);
+                
+                if (startGame) {
+                    currentScreen = GAME_SCREEN;
+                }
+            } else if (currentScreen == GAME_SCREEN) {
+                startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers);
             }
         }
     }
-
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    TTF_CloseFont(font);
-    TTF_Quit();
-    SDL_Quit();
     return 0;
 }

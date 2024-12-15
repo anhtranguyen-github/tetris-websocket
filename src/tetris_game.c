@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <pthread.h>
 #include "tetris_game.h"
 #include "client_utils.h"
 #include "ultis.h"
@@ -20,11 +21,14 @@ int decrease = 1;
 char session_id[MAX_SESSION_ID] = "";
 
 LeaderboardEntry leaderboard[LEADERBOARD_SIZE] = {
-    {"Player1", 0},
-    {"Player2", 0},
-    {"Player3", 0},
-    {"Player4", 0},
-    {"Player5", 0}
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0}
 };
 
 const int ShapesArray[7][4][4] = {
@@ -110,10 +114,13 @@ Shape copyShape(const int shapeArray[4][4], int width) {
 }
 
 void freeShape(Shape shape) {
-    for (int i = 0; i < shape.width; i++) {
-        free(shape.array[i]);
+    if (shape.array != NULL) {
+        for (int i = 0; i < shape.width; i++) {
+            free(shape.array[i]);
+        }
+        free(shape.array);
+        shape.array = NULL;
     }
-    free(shape.array);
 }
 
 int checkPosition(Shape shape) {
@@ -264,15 +271,32 @@ void handleEvents(int *quit) {
     }
 }
 
-void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
+void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers) {
     SDL_Color white = {255, 255, 255};
     SDL_Surface *surface;
     SDL_Texture *texture;
     SDL_Rect rect;
     char buffer[50];
 
-    // Render each leaderboard entry
     for (int i = 0; i < LEADERBOARD_SIZE; i++) {
+        strncpy(leaderboard[i].name, "", sizeof(leaderboard[i].name));
+    }
+
+    char playersCopy[ROOM_PLAYER_BUFFER_SIZE];
+    strncpy(playersCopy, roomPlayers, sizeof(playersCopy));
+    playersCopy[sizeof(playersCopy) - 1] = '\0';  // Ensure null-terminated string
+    char *token = strtok(playersCopy, ",");
+    int index = 0;
+
+    while (token != NULL && index < LEADERBOARD_SIZE) {
+        strncpy(leaderboard[index].name, token, sizeof(leaderboard[index].name));
+        leaderboard[index].name[sizeof(leaderboard[index].name) - 1] = '\0';  // Ensure null-termination
+        token = strtok(NULL, ",");
+        index++;
+    }
+
+    // Render each leaderboard entry
+    for (int i = 0; i < index; i++) {
         snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
         surface = TTF_RenderText_Solid(font, buffer, white);
         texture = SDL_CreateTextureFromSurface(renderer, surface);
@@ -298,7 +322,7 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
 
     SDL_Color shapeColor = {255, 255, 0}; // Yellow color for the next shape
     int shapeStartX = SCREEN_WIDTH - 250; // Position to render next shape
-    int shapeStartY = 200;
+    int shapeStartY = 450;
 
     for (int i = 0; i < nextShape.width; i++) {
         for (int j = 0; j < nextShape.width; j++) {
@@ -316,7 +340,7 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font) {
     }
 }
 
-void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
+void renderGame(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers) {
     SDL_Color colors[] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};
     
     // Clear the screen
@@ -348,7 +372,7 @@ void renderGame(SDL_Renderer *renderer, TTF_Font *font) {
     SDL_RenderDrawLine(renderer, SCREEN_WIDTH - 350, 0, SCREEN_WIDTH - 350, SCREEN_HEIGHT);
 
     // Render the leaderboard
-    renderLeaderboard(renderer, font);
+    renderLeaderboard(renderer, font, roomPlayers);
 
     // Present the rendered frame
     SDL_RenderPresent(renderer);
@@ -871,36 +895,17 @@ void handleJoinRoomEvents(int *quit, int *joinRoomSuccess, char *username, char 
 }
 
 void handleJoinRandomRoomEvents(int *quit, int *joinRoomSuccess, char *username, int client_fd, Message *response) {
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) {
-            *quit = 1;
-            write_to_log("Event: SDL_QUIT");
-        } else if (e.type == SDL_KEYDOWN) {
-            SDL_Keycode key = e.key.keysym.sym;
-            write_to_log("Event: SDL_KEYDOWN");
-            write_to_log_int(key);
-            if (key == SDLK_RETURN) {
-                write_to_log("Key: SDLK_RETURN");
-                if (join_random_room(client_fd, username, session_id)) {
-                    *joinRoomSuccess = 1;
-                    write_to_log("Join random room success.");
-                    recv(client_fd, response, sizeof(Message), 0);
-                } else {
-                    write_to_log("Join random room failed.");
-                }
-            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
-                char keyChar = (char)key;
-                write_to_log("Key: Character input");
-                write_to_log_int(keyChar);
-                if (strlen(username) < MAX_USERNAME - 1) {
-                    strncat(username, &keyChar, 1);
-                    write_to_log("Username updated:");
-                    write_to_log(username);
-                }
-            }
+     if (!*joinRoomSuccess) {
+        write_to_log("Sending join random room request...");
+        
+        if (join_random_room(client_fd, username, session_id, response)) {
+            *joinRoomSuccess = 1;  // Successfully joined a room
+            write_to_log("Successfully joined a random room.");
+        } else {
+            write_to_log("Failed to join a random room.");
+            *quit = 1;  // Exit on failure
         }
-    }
+     }
 }
 
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players) {
@@ -969,5 +974,38 @@ void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_
     SDL_RenderCopy(renderer, texture, NULL, &rect);
     SDL_DestroyTexture(texture);
 
+    // Start room message
+    snprintf(buffer, sizeof(buffer), "Press Enter to start the game!");
+    surface = TTF_RenderText_Solid(font, buffer, white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.y += 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
     SDL_RenderPresent(renderer);
 }
+
+void handleWaitingRoomEvents(int *quit, int *startGame) {
+    SDL_Event e;
+    write_to_log("Enter handle Wait Room...");
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode key = e.key.keysym.sym;
+            switch (key)
+            {
+            case SDLK_RETURN:
+                *startGame = 1;
+                break;
+            default:
+                write_to_log_int(key);
+                break;
+            }
+        }
+    }
+}
+
