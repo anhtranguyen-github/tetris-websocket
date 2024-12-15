@@ -7,6 +7,8 @@
 #include "tetris_game.h"
 #include "protocol/network.h"
 #include "protocol/protocol.h"
+#include "ultis.h"  
+
 
 #define SCREEN_WIDTH  800  // or whatever value you need
 #define SCREEN_HEIGHT 600  // or whatever value you need
