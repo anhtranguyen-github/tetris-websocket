@@ -14,6 +14,9 @@
 #include "database.h"
 
 
+
+
+
 int server_fd;
 
 typedef struct OnlineUser {
@@ -26,9 +29,9 @@ typedef struct OnlineUser {
     int is_authenticated;               // Boolean to track if the user is authenticated (1 = yes, 0 = no)
 
 
-    char ip_address[100]; 
-    int port;
-    char time_buffer[100];
+    char ip_address[100];   //newly added
+    int port;//newly added
+    char time_buffer[100];//newly added
 
 
 
@@ -387,6 +390,7 @@ Message handle_create_room(Message* msg, PGconn* conn) {
     // Return the Message struct with the appropriate response
     return response;
 }
+
 
 // Handle joining an existing room
 bool handleJoinRoom(PGconn* conn, const char* sessionID, const char* roomID) {
