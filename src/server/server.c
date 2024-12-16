@@ -387,21 +387,6 @@ Message handle_create_room(Message* msg, PGconn* conn) {
 }
 
 
-// Handle joining an existing room
-bool handleJoinRoom(PGconn* conn, const char* sessionID, const char* roomID) {
-    const char* query = "INSERT INTO room_participants (room_id, user_id) "
-                        "VALUES ($1, (SELECT username FROM sessions WHERE session_id = $2));";
-    const char* paramValues[2] = { roomID, sessionID };
-
-    PGresult* res = PQexecParams(conn, query, 2, NULL, paramValues, NULL, NULL, 0);
-    bool success = (PQresultStatus(res) == PGRES_COMMAND_OK);
-    if (!success) {
-        fprintf(stderr, "Failed to join room: %s\n", PQerrorMessage(conn));
-    }
-    PQclear(res);
-    return success;
-}
-
 
 
 
@@ -523,6 +508,47 @@ void broadcast_message_to_room(int room_id, Message *message) {
 }
 
 
+
+int get_brick_limits(int room_id, PGconn *conn) {
+    if (conn == NULL) {
+        fprintf(stderr, "Database connection is null.\n");
+        return -1; // Return -1 to indicate an error.
+    }
+
+    const char *query = "SELECT brick_limit FROM rooms WHERE room_id = $1;";
+    PGresult *res = PQexecParams(
+        conn,
+        query,
+        1,                // Number of parameters
+        NULL,             // Parameter types (let the server infer types)
+        (const char *[]) { // Parameter values
+            (const char *) &room_id
+        },
+        NULL,             // Parameter lengths (not needed for int4)
+        NULL,             // Parameter formats (text mode)
+        0                 // Result format (0 = text, 1 = binary)
+    );
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "Error executing query: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return -1; // Return -1 to indicate an error.
+    }
+
+    if (PQntuples(res) == 0) {
+        fprintf(stderr, "No room found with room_id %d.\n", room_id);
+        PQclear(res);
+        return -1; // Return -1 to indicate an error or no result.
+    }
+
+    // Parse the brick_limit value.
+    int brick_limit = atoi(PQgetvalue(res, 0, 0));
+    PQclear(res);
+    return brick_limit;
+}
+
+
+
 Message handle_join_room(Message *msg, PGconn *conn) {
     Message response = {0};
     char session_id[MAX_SESSION_ID], room_name[MAX_ROOM_NAME];
@@ -608,6 +634,18 @@ Message handle_join_room(Message *msg, PGconn *conn) {
     PQclear(result);
     write_to_log("Player successfully added to room.");
 
+
+
+    for (int i = 0; i < MAX_USERS; i++) {
+        OnlineUser *user = &online_users[i];
+        if (user->is_authenticated && strcmp(user->username, msg->username) == 0) {
+            user->room_id = room_id;
+            write_to_log("Updated online_users entry with new room_id:");
+            write_to_log_int(user->room_id);
+            break;
+        }
+    }
+
     // Construct the success response
     response.type = ROOM_JOINED;
     snprintf(response.data, BUFFER_SIZE, "Successfully joined room '%s'.", room_name);
@@ -616,6 +654,13 @@ Message handle_join_room(Message *msg, PGconn *conn) {
 
     write_to_log("Response constructed successfully:");
     write_to_log(response.data);
+
+
+    Message broadcast_msg = {0};
+    broadcast_msg.type = PLAYER_JOINED;
+    snprintf(broadcast_msg.data, BUFFER_SIZE, "Player '%s' has joined the room.", msg->username);
+    broadcast_message_to_room(room_id, &broadcast_msg);
+
 
     return response;
 }
@@ -691,6 +736,16 @@ Message handle_join_random_room(Message *msg, PGconn *conn) {
     PQclear(result);
     write_to_log("Player successfully added to random room.");
 
+    for (int i = 0; i < MAX_USERS; i++) {
+        OnlineUser *user = &online_users[i];
+        if (user->is_authenticated && strcmp(user->username, msg->username) == 0) {
+            user->room_id = room_id;
+            write_to_log("Updated online_users entry with new room_id:");
+            write_to_log_int(user->room_id);
+            break;
+        }
+    }
+
     // Construct success response
     response.type = ROOM_JOINED;
 
@@ -715,6 +770,14 @@ Message handle_join_random_room(Message *msg, PGconn *conn) {
     write_to_log(response.data);
     write_to_log_int(response.type);
 free(room_info);
+
+
+    Message broadcast_msg = {0};
+    broadcast_msg.type = PLAYER_JOINED;
+    snprintf(broadcast_msg.data, BUFFER_SIZE, "Player '%s' has joined the room.", msg->username);
+    broadcast_message_to_room(room_id, &broadcast_msg);
+
+
     return response;
 }
 
