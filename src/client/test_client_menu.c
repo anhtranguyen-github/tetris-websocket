@@ -153,7 +153,9 @@ void join_room(int client_fd) {
             break;
 
         default:
+            // Print response.type and response.data by default
             printf("Unexpected response type: %d\n", response.type);
+            printf("Response Data: %s\n", response.data);
             break;
     }
 }

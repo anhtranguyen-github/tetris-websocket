@@ -40,7 +40,7 @@ typedef struct {
     int brick_limit;
     int max_players;
     int current_players;
-    char room_players[ROOM_PLAYER_BUFFER_SIZE]; // List of player usernames, separated by commas
+    char room_players[ROOM_PLAYER_BUFFER_SIZE]; 
 } RoomInfo;
 
 

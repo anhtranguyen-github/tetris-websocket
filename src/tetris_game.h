@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include "protocol/protocol.h"
+#include "ultis.h"  
 
 #define LEADERBOARD_SIZE 8
 #define BLOCK_SIZE 30
