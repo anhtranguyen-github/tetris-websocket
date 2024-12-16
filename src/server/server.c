@@ -486,6 +486,42 @@ RoomInfo *get_room_info(PGconn *conn, int room_id) {
 }
 
 
+void broadcast_message_to_room(int room_id, Message *message) {
+    if (!message) {
+        write_to_log("Error: Message is NULL");
+        return;
+    }
+    
+    char log_buffer[BUFFER_SIZE];
+    snprintf(log_buffer, BUFFER_SIZE, "Broadcasting message to room_id: %d", room_id);
+    write_to_log(log_buffer);
+    
+    for (int i = 0; i < MAX_USERS; i++) {
+        OnlineUser *user = &online_users[i];
+        
+        // Log user details
+        snprintf(log_buffer, BUFFER_SIZE, "Checking user %d: username=%s, socket_fd=%d, room_id=%d", i, user->username, user->socket_fd, user->room_id);
+        write_to_log(log_buffer);
+        
+        // Check if the user is active, authenticated, and belongs to the specified room
+        if (user->socket_fd > 0 && user->is_authenticated && user->room_id == room_id) {
+            snprintf(log_buffer, BUFFER_SIZE, "Sending message to user: %s (socket_fd: %d)", user->username, user->socket_fd);
+            write_to_log(log_buffer);
+            
+            ssize_t bytes_sent = send(user->socket_fd, message, sizeof(Message), 0);
+            
+            if (bytes_sent < 0) {
+                perror("send");
+                snprintf(log_buffer, BUFFER_SIZE, "Failed to send message to user: %s (socket_fd: %d)", user->username, user->socket_fd);
+                write_to_log(log_buffer);
+            } else {
+                snprintf(log_buffer, BUFFER_SIZE, "Message broadcasted to user: %s (socket_fd: %d)", user->username, user->socket_fd);
+                write_to_log(log_buffer);
+            }
+        }
+    }
+}
+
 
 Message handle_join_room(Message *msg, PGconn *conn) {
     Message response = {0};
