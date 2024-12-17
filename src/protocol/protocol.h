@@ -33,15 +33,6 @@ typedef struct {
     char data[BUFFER_SIZE];
 } Message;
 
-typedef struct {
-    int room_id;
-    char room_name[MAX_ROOM_NAME];
-    int time_limit;
-    int brick_limit;
-    int max_players;
-    int current_players;
-    char room_players[ROOM_PLAYER_BUFFER_SIZE]; 
-} RoomInfo;
 
 
 #endif

@@ -12,6 +12,7 @@
 #include "../ultis.h"  
 #include <uuid/uuid.h>  
 #include "database.h"
+#include "object.h"
 
 
 
@@ -780,10 +781,10 @@ free(room_info);
 
     return response;
 }
+//Message start_game_message
+//Message handle_start_game(Message *msg, PGconn *conn) {
 
-Message handle_start_game(Message *msg, PGconn *conn) {
-
-}
+//}
 
 
 
@@ -843,7 +844,7 @@ void handleClientRequest(int clientSocket, PGconn* conn) {
                 response = handle_join_random_room(&msg, conn);
                 break;
             case START_GAME:
-                response = handle_start_game(&msg, conn);
+                //response = handle_start_game(&msg, conn);
                 break;
 
             case DISCONNECT:
