@@ -806,7 +806,7 @@ void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *
     SDL_RenderPresent(renderer);
 }
 
-void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, char *room_name, int *time_limit, int *brick_limit, int *max_player, int *selectedField, int client_fd) {
+void handleCreateRoomEvents(int *quit, char *username, char *room_name, int *time_limit, int *brick_limit, int *max_player, int *selectedField, int client_fd) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
@@ -828,28 +828,8 @@ void handleCreateRoomEvents(int *quit, int *createRoomSuccess, char *username, c
                     *max_player = *max_player / 10;
                 }
             } else if (key == SDLK_RETURN) {
-                Message msg = {CREATE_ROOM, "", "", ""};
-                snprintf(msg.data, sizeof(msg.data), "%s|%d|%d|%d", session_id, *time_limit, *brick_limit, *max_player);
-                strncpy(msg.username, username, MAX_USERNAME);
-                strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
-                send(client_fd, &msg, sizeof(Message), 0);
+               create_room(client_fd, username, room_name, session_id, *time_limit, *brick_limit, *max_player);
 
-                Message response;
-                int bytes_received = recv(client_fd, &response, sizeof(Message), 0);
-
-                if (bytes_received <= 0) {
-                    printf("Error receiving response from server.\n");
-                    return;
-                }
-
-                if (response.type == CREATE_ROOM_SUCCESS) {
-                    printf("Room created successfully: %s\n", response.data);
-                    *createRoomSuccess = 1;
-                } else if (response.type == CREATE_ROOM_FAILURE) {
-                    printf("Failed to create room: %s\n", response.data);
-                } else {
-                    printf("Unexpected response type: %d\n", response.type);
-                }
             } else if (key >= SDLK_SPACE && key <= SDLK_z) {
                 char keyChar = (char)key;
                 if (*selectedField == 0 && strlen(username) < MAX_USERNAME - 1) {

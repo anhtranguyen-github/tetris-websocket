@@ -71,6 +71,13 @@ void handleServerMessages(int client_fd) {
         }
 
         switch (response.type) {
+            case CREATE_ROOM_SUCCESS:
+                printf("Room created successfully: %s\n", response.data);
+                createRoomSuccess = 1;
+                break;
+            case CREATE_ROOM_FAILURE:
+                printf("Failed to create room: %s\n", response.data);
+                break;
             case ROOM_JOINED:
                 printf("Successfully joined room: %s\n", response.room_name);
                 printf("Server message: %s\n", response.data);
@@ -252,7 +259,7 @@ int main() {
                             if (strcmp(buttons[i].text, "Create Room") == 0) {
                                 // Handle create room
                                 while (!quit && !createRoomSuccess) {
-                                    handleCreateRoomEvents(&quit, &createRoomSuccess, username, room_name, &time_limit, &brick_limit, &max_player, &selectedField, client_fd);
+                                    handleCreateRoomEvents(&quit, username, room_name, &time_limit, &brick_limit, &max_player, &selectedField, client_fd);
                                     renderCreateRoomScreen(renderer, font, username, room_name, time_limit, brick_limit, max_player, selectedField);
                                 }
 
@@ -274,7 +281,7 @@ int main() {
                             } else if (strcmp(buttons[i].text, "Quick Join") == 0) {
                                 // Handle quick join
 
-                                handleJoinRandomRoomEvents(client_fd, "");
+                                handleJoinRandomRoomEvents(client_fd, username);
                             }
                         }
                     }

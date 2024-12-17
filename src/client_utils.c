@@ -29,6 +29,16 @@ int send_login_request(int client_fd, const char *username, const char *password
     }
 }
 
+int create_room(int client_fd, const char *username, const char *room_name, const char *session_id, int time_limit, int brick_limit, int max_player) {
+    Message msg = {CREATE_ROOM, "", "", ""};
+    snprintf(msg.data, sizeof(msg.data), "%s|%d|%d|%d", session_id, time_limit, brick_limit, max_player);
+    strncpy(msg.username, username, MAX_USERNAME);
+    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    return 0;
+}
+
 int join_room(int client_fd, const char *username, const char *room_name, const char *session_id) {
     Message msg = {JOIN_ROOM, "", "", ""};
     snprintf(msg.data, sizeof(msg.data), "%s|%s", session_id, room_name);
