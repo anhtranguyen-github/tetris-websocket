@@ -11,6 +11,6 @@
 
 int send_login_request(int client_fd, const char *username, const char *password, char *session_id);
 int join_room(int client_fd, const char *username, const char *room_name, const char *session_id);
-int join_random_room(int client_fd, const char *username, const char *session_id, Message *response);
+int join_random_room(int client_fd, const char *username, const char *session_id);
 
 #endif

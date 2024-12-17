@@ -894,18 +894,8 @@ void handleJoinRoomEvents(int *quit, int *joinRoomSuccess, char *username, char 
     }
 }
 
-void handleJoinRandomRoomEvents(int *quit, int *joinRoomSuccess, char *username, int client_fd, Message *response) {
-     if (!*joinRoomSuccess) {
-        write_to_log("Sending join random room request...");
-        
-        if (join_random_room(client_fd, username, session_id, response)) {
-            *joinRoomSuccess = 1;  // Successfully joined a room
-            write_to_log("Successfully joined a random room.");
-        } else {
-            write_to_log("Failed to join a random room.");
-            *quit = 1;  // Exit on failure
-        }
-     }
+void handleJoinRandomRoomEvents(int client_fd, char *username) {
+    join_random_room(client_fd, username, session_id);
 }
 
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players) {

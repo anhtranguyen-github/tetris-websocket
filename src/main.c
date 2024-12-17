@@ -13,6 +13,20 @@
 #define SCREEN_HEIGHT 600  // or whatever value you need
 
 int quit = 0;
+int client_fd;
+
+char username[MAX_USERNAME] = "";
+char password[MAX_PASSWORD] = "";
+char room_name[255] = "";
+int time_limit = 0;
+int brick_limit = 0;
+int max_player = 8;
+int usernameSelected = 1;
+int loginSuccess = 0;
+int createRoomSuccess = 0;
+int joinRoomSuccess = 0;
+int selectedField = 0;
+
 
 void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -41,7 +55,6 @@ char currentRoomPlayers[BUFFER_SIZE];
 ScreenState currentScreen;
 
 
-/*
 void* serverMessageThread(void* arg) {
     int client_fd = *((int*)arg);
     handleServerMessages(client_fd);
@@ -65,6 +78,7 @@ void handleServerMessages(int client_fd) {
                 sscanf(response.data, "%[^|]|%d|%d|%d|%[^|]",
                        currentRoomName, &currentTimeLimit, &currentBrickLimit, 
                        &currentMaxPlayers, currentRoomPlayers);
+                joinRoomSuccess = 1;
                 currentScreen = WAITING_ROOM_SCREEN;
                 break;
 
@@ -90,8 +104,6 @@ void handleServerMessages(int client_fd) {
         }
     }
 }
-
-*/
 
 void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers) {
     initShapeList();
@@ -204,32 +216,17 @@ int main() {
     }
     printf("Font loaded.\n");
 
-    char username[MAX_USERNAME] = "";
-    char password[MAX_PASSWORD] = "";
-    char room_name[255] = "";
-    int time_limit = 0;
-    int brick_limit = 0;
-    int max_player = 8;
-    int usernameSelected = 1;
-    int loginSuccess = 0;
-    int createRoomSuccess = 0;
-    //int joinRoomSuccess = 0;
-    int selectedField = 0;
-
-
     while (!quit && !loginSuccess) {
         handleLoginEvents(&quit, &loginSuccess, username, password, &usernameSelected, client_fd);
         renderLoginScreen(renderer, font, username, password, usernameSelected);
     }
 
-    /*
     pthread_t tid;
     if (pthread_create(&tid, NULL, serverMessageThread, &client_fd) != 0) {
         perror("Failed to create server message thread");
         close(client_fd);
         exit(EXIT_FAILURE);
     }
-    */
 
     if (loginSuccess) {
         currentScreen = MENU_SCREEN;
@@ -259,29 +256,25 @@ int main() {
                                     renderCreateRoomScreen(renderer, font, username, room_name, time_limit, brick_limit, max_player, selectedField);
                                 }
 
+                                if (createRoomSuccess) {
+                                    // Initialize waiting room data
+                                    strncpy(currentRoomName, room_name, MAX_ROOM_NAME);
+                                    currentTimeLimit = time_limit;
+                                    currentBrickLimit = brick_limit;
+                                    currentMaxPlayers = max_player;
+                                    snprintf(currentRoomPlayers, sizeof(currentRoomPlayers), "%s", username); // Add creator as the first player
+                            
+                                    // Transition to the waiting room screen
+                                    currentScreen = WAITING_ROOM_SCREEN;
+                                }
+
                             } else if (strcmp(buttons[i].text, "Join Room") == 0) {
                                 // Handle join room
 
                             } else if (strcmp(buttons[i].text, "Quick Join") == 0) {
                                 // Handle quick join
-                                int joinRoomSuccess = 0;
-                                char username[MAX_USERNAME] = "";  // Initialize or load a predefined username
-                                Message response = {0};           // To store server's response
 
-                                handleJoinRandomRoomEvents(&quit, &joinRoomSuccess, username, client_fd, &response);
-
-                                if (joinRoomSuccess) {
-                                    // Parse the response and enter the waiting room
-                                    sscanf(response.data, "%[^|]|%d|%d|%d|%[^|]",
-                                       currentRoomName, &currentTimeLimit, &currentBrickLimit, 
-                                       &currentMaxPlayers, currentRoomPlayers);
-                                    printf("Joined Room: %s\n", currentRoomName);
-                                    printf("Time Limit: %d, Brick Limit: %d, Max Players: %d\n", currentTimeLimit, currentBrickLimit, currentMaxPlayers);
-                                    printf("Room Players: %s\n", currentRoomPlayers);
-
-                                    // Update screen state
-                                    currentScreen = WAITING_ROOM_SCREEN;            
-                                }
+                                handleJoinRandomRoomEvents(client_fd, "");
                             }
                         }
                     }
@@ -294,6 +287,15 @@ int main() {
                 int startGame = 0;
                 handleWaitingRoomEvents(&quit, &startGame);
                 renderWaitingRoom(renderer, font, currentRoomName, currentTimeLimit, currentBrickLimit, currentMaxPlayers, currentRoomPlayers);
+                // waiting room, then someone (or the host) press Enter
+                    // Right now everyone gets the: "Press Enter to start Game" text
+                    // If the server returns a message contains the host id, 
+                    // compare user_id == host_id, only the host will get the text, and a handle Enter event
+                // After press Enter, the, sends starts game to the server using START_GAME(?)
+                // Server create game in the DB?
+                // Server broadcast to all players in the room
+                // Client recieved the message START_GAME_SUCCESS(?)
+                // After recieving the message, int startGame = 1 then the following line starts:
                 
                 if (startGame) {
                     currentScreen = GAME_SCREEN;
