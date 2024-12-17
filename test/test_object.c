@@ -6,26 +6,23 @@
 
 // Test the functions
 int main() {
-    printf("\n--- Testing Online Game System ---\n");
+    // Initialize a game
+    room_infor[0].room_id = 1;
+    strcpy(room_infor[0].room_name, "Room 1");
+    room_infor[0].brick_limit = 10;
+    strcpy(room_infor[0].room_players, "Alice,Bob,Charlie");
 
-    // Test: Adding online games
-    add_online_games(101);
-    add_online_games(102);
+    add_online_games(1);
 
-    // Test: Updating leaderboard for the first game
-    printf("\n--- Updating Leaderboard for Game 1 ---\n");
-    update_leaderboard(1, "Alice", 1500);
-    update_leaderboard(1, "Bob", 1800);
-    update_leaderboard(1, "Charlie", 1700);
-    update_leaderboard(1, "Dave", 1600);
+    // Update leaderboard scores
+    int game_id = online_game[0].game_id;
 
-    // Test: Display leaderboard
-    printf("\n--- Leaderboard for Game 1 ---\n");
-    for (int i = 0; i < LEADERBOARD_SIZE; i++) {
-        if (online_game[0].leaderboard[i].score > 0) {
-            printf("%d. %s - %d\n", i + 1, online_game[0].leaderboard[i].name, online_game[0].leaderboard[i].score);
-        }
-    }
+    update_leaderboard(game_id, "Alice", 10);
+    update_leaderboard(game_id, "Bob", 15);
+    update_leaderboard(game_id, "Charlie", 5);
+
+    // Attempt to update a non-existing player
+    update_leaderboard(game_id, "UnknownPlayer", 10);
 
     return 0;
 }
