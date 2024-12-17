@@ -29,6 +29,16 @@ int send_login_request(int client_fd, const char *username, const char *password
     }
 }
 
+int create_room(int client_fd, const char *username, const char *room_name, const char *session_id, int time_limit, int brick_limit, int max_player) {
+    Message msg = {CREATE_ROOM, "", "", ""};
+    snprintf(msg.data, sizeof(msg.data), "%s|%d|%d|%d", session_id, time_limit, brick_limit, max_player);
+    strncpy(msg.username, username, MAX_USERNAME);
+    strncpy(msg.room_name, room_name, MAX_ROOM_NAME);
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    return 0;
+}
+
 int join_room(int client_fd, const char *username, const char *room_name, const char *session_id) {
     Message msg = {JOIN_ROOM, "", "", ""};
     snprintf(msg.data, sizeof(msg.data), "%s|%s", session_id, room_name);
@@ -69,31 +79,12 @@ int join_room(int client_fd, const char *username, const char *room_name, const 
     return 0;
 }
 
-int join_random_room(int client_fd, const char *username, const char *session_id, Message *response) {
+int join_random_room(int client_fd, const char *username, const char *session_id) {
     Message msg = {JOIN_RANDOM, "", "", ""};
     strncpy(msg.username, username, MAX_USERNAME);
     snprintf(msg.data, BUFFER_SIZE, "%s", session_id);
 
     send(client_fd, &msg, sizeof(Message), 0);
-
-    int bytes_received = recv(client_fd, response, sizeof(Message), 0);
-
-    if (bytes_received <= 0) {
-        printf("Error receiving response from server.\n");
-        return 0;
-    }
-
-    if (response->type == ROOM_JOINED) {
-        printf("Successfully joined random room: %s\n", response->room_name);
-        printf("Server message: %s\n", response->data);
-        return 1;
-    } else if (response->type == ROOM_NOT_FOUND) {
-        printf("Failed to join a random room: %s\n", response->data);
-    } else if (response->type == JOIN_ROOM_FAILURE) {
-        printf("Unexpected error occurred while joining a random room: %s\n", response->data);
-    } else {
-        printf("Unexpected response type: %d\n", response->type);
-    }
 
     return 0;
 }
