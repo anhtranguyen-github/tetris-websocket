@@ -54,13 +54,6 @@ int currentMaxPlayers;
 char currentRoomPlayers[BUFFER_SIZE];
 ScreenState currentScreen;
 
-
-void* serverMessageThread(void* arg) {
-    int client_fd = *((int*)arg);
-    handleServerMessages(client_fd);
-    return NULL;
-}
-
 void handleServerMessages(int client_fd) {
     Message response;
     while (1) {
@@ -100,6 +93,9 @@ void handleServerMessages(int client_fd) {
             case ROOM_FULL:
                 printf("Room is full: %s\n", response.data);
                 break;
+            case PLAYER_JOINED:
+                printf("Another player joined: %s\n", response.data);
+                break;               
 
             case GAME_ALREADY_STARTED:
                 printf("Game already started in room: %s\n", response.data);
@@ -110,6 +106,12 @@ void handleServerMessages(int client_fd) {
                 break;
         }
     }
+}
+
+void* serverMessageThread(void* arg) {
+    int client_fd = *((int*)arg);
+    handleServerMessages(client_fd);
+    return NULL;
 }
 
 void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers) {
@@ -270,13 +272,30 @@ int main() {
                                     currentBrickLimit = brick_limit;
                                     currentMaxPlayers = max_player;
                                     snprintf(currentRoomPlayers, sizeof(currentRoomPlayers), "%s", username); // Add creator as the first player
-                            
+                                    createRoomSuccess = 0;
                                     // Transition to the waiting room screen
                                     currentScreen = WAITING_ROOM_SCREEN;
                                 }
 
                             } else if (strcmp(buttons[i].text, "Join Room") == 0) {
                                 // Handle join room
+                                while (!quit && !joinRoomSuccess){
+                                    handleJoinRoomEvents(&quit, username, room_name, client_fd);
+                                    renderJoinRoomScreen(renderer, font, room_name);
+                                }
+
+                                if (joinRoomSuccess) {
+                                    // Initialize waiting room data
+                                    strncpy(currentRoomName, room_name, MAX_ROOM_NAME);
+                                    currentTimeLimit = time_limit;
+                                    currentBrickLimit = brick_limit;
+                                    currentMaxPlayers = max_player;
+                                    snprintf(currentRoomPlayers, sizeof(currentRoomPlayers), "%s", username); // Add creator as the first player
+                                    createRoomSuccess = 0;
+                                    // Transition to the waiting room screen
+                                    currentScreen = WAITING_ROOM_SCREEN;
+                                }
+
 
                             } else if (strcmp(buttons[i].text, "Quick Join") == 0) {
                                 // Handle quick join

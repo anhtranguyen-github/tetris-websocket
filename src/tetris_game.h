@@ -71,7 +71,8 @@ void renderLoginScreen(SDL_Renderer *renderer, TTF_Font *font, const char *usern
 void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *password, int *usernameSelected, int client_fd);
 void renderCreateRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *room_name, int time_limit, int brick_limit, int max_player, int selectedField);
 void handleCreateRoomEvents(int *quit, char *username, char *room_name, int *time_limit, int *brick_limit, int *max_player, int *selectedField, int client_fd);
-void handleJoinRoomEvents(int *quit, int *joinRoomSuccess, char *username, char *room_name, int client_fd);
+void handleJoinRoomEvents(int *quit, char *username, char *room_name, int client_fd);
+void renderJoinRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *room_name);
 void handleJoinRandomRoomEvents(int client_fd, char *username);
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players);
 void handleWaitingRoomEvents(int *quit, int *startGame);
