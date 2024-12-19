@@ -20,21 +20,6 @@
 
 int server_fd;
 
-typedef struct OnlineUser {
-    int user_id;                          // Unique ID of the user (from database)
-    char username[MAX_USERNAME];     // Username (max length 50)
-    char session_id[MAX_SESSION_ID]; // Session ID (max length 255)
-    int socket_fd;                       // File descriptor for the user's socket
-    struct sockaddr_in client_addr;     // Address information for the user
-    time_t last_activity;               // Timestamp of the last activity (for timeouts)
-    int is_authenticated;            // Boolean to track if the user is authenticated (1 = yes, 0 = no)
-    char ip_address[100];  
-    int port;
-    char time_buffer[100];
-    int room_id;                      
-    int is_hosting;                     
-} OnlineUser;
-OnlineUser online_users[MAX_USERS];
 
 
 
@@ -391,86 +376,6 @@ Message handle_create_room(Message* msg, PGconn* conn) {
 
 
 
-RoomInfo *get_room_info(PGconn *conn, int room_id) {
-    char query[BUFFER_SIZE];
-    PGresult *result;
-    RoomInfo *room_info = malloc(sizeof(RoomInfo));
-
-    if (!room_info) {
-        write_to_log("Failed to allocate memory for RoomInfo.");
-        return NULL;
-    }
-
-    room_info->room_id = room_id;
-
-    // Query to get room information
-    snprintf(query, BUFFER_SIZE,
-             "SELECT room_name, time_limit, brick_limit, max_players, "
-             "(SELECT COUNT(*) FROM room_players WHERE room_id = %d) AS current_players "
-             "FROM rooms WHERE room_id = %d;", 
-             room_id, room_id);
-
-    write_to_log("Executing query to get room information:");
-    write_to_log(query);
-    result = PQexec(conn, query);
-
-    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
-        write_to_log("Failed to retrieve room information.");
-        write_to_log(PQerrorMessage(conn));
-        PQclear(result);
-        free(room_info);
-        return NULL; // Indicate failure
-    }
-
-    if (PQntuples(result) == 0) {
-        write_to_log("No room found with the given room_id.");
-        PQclear(result);
-        free(room_info);
-        return NULL; // No room found
-    }
-
-    // Extract room information
-    strncpy(room_info->room_name, PQgetvalue(result, 0, 0), MAX_ROOM_NAME);
-    room_info->time_limit = atoi(PQgetvalue(result, 0, 1));
-    room_info->brick_limit = atoi(PQgetvalue(result, 0, 2));
-    room_info->max_players = atoi(PQgetvalue(result, 0, 3));
-    room_info->current_players = atoi(PQgetvalue(result, 0, 4));
-
-    PQclear(result);
-
-    // Query to get usernames of players in the room
-    snprintf(query, BUFFER_SIZE,
-             "SELECT u.username FROM room_players rp "
-             "JOIN users u ON rp.user_id = u.user_id "
-             "WHERE rp.room_id = %d;", 
-             room_id);
-
-    write_to_log("Executing query to get room players:");
-    write_to_log(query);
-    result = PQexec(conn, query);
-
-    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
-        write_to_log("Failed to retrieve room players.");
-        write_to_log(PQerrorMessage(conn));
-        PQclear(result);
-        free(room_info);
-        return NULL; // Indicate failure
-    }
-
-    room_info->room_players[0] = '\0'; // Clear the buffer
-    int player_count = PQntuples(result);
-    for (int i = 0; i < player_count; i++) {
-        if (i > 0) strncat(room_info->room_players, ", ", BUFFER_SIZE - strlen(room_info->room_players) - 1);
-        strncat(room_info->room_players, PQgetvalue(result, i, 0), BUFFER_SIZE - strlen(room_info->room_players) - 1);
-    }
-
-    write_to_log("Room players fetched successfully:");
-    write_to_log(room_info->room_players);
-    PQclear(result);
-
-    return room_info; // Return the populated struct
-}
-
 
 void broadcast_message_to_room(int room_id, Message *message) {
     if (!message) {
@@ -649,13 +554,24 @@ Message handle_join_room(Message *msg, PGconn *conn) {
 
     // Construct the success response
     response.type = ROOM_JOINED;
-    snprintf(response.data, BUFFER_SIZE, "Successfully joined room '%s'.", room_name);
+    RoomInfo *room_info = get_room_info(conn, room_id);
+    //snprintf(response.data, BUFFER_SIZE, "Successfully joined room '%s'.", room_name);
+    snprintf(response.data, BUFFER_SIZE, 
+        "%s|%d|%d|%d|%s", 
+        room_info->room_name, 
+        room_info->time_limit, 
+        room_info->brick_limit, 
+        room_info->max_players, 
+        room_info->room_players
+    );
+    
+    
     strncpy(response.room_name, room_name, MAX_ROOM_NAME);
     strncpy(response.username, msg->username, MAX_USERNAME);
 
     write_to_log("Response constructed successfully:");
     write_to_log(response.data);
-
+free(room_info);
 
     Message broadcast_msg = {0};
     broadcast_msg.type = PLAYER_JOINED;
