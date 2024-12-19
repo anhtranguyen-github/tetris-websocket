@@ -47,35 +47,6 @@ int join_room(int client_fd, const char *username, const char *room_name, const 
 
     send(client_fd, &msg, sizeof(Message), 0);
 
-    Message response;
-    int bytes_received = recv(client_fd, &response, sizeof(Message), 0);
-
-    if (bytes_received <= 0) {
-        printf("Error receiving response from server.\n");
-        return 0;
-    }
-
-    switch (response.type) {
-        case ROOM_JOINED:
-            printf("Successfully joined room: %s\n", response.room_name);
-            printf("Server message: %s\n", response.data);
-            return 1;
-        case ROOM_NOT_FOUND:
-            printf("Failed to join room: %s\n", response.data);
-            break;
-        case ROOM_FULL:
-            printf("Room is full: %s\n", response.data);
-            break;
-        case GAME_ALREADY_STARTED:
-            printf("Game already started in room: %s\n", response.data);
-            break;
-        case JOIN_ROOM_FAILURE:
-            printf("Failed to join room: %s\n", response.data);
-            break;
-        default:
-            printf("Unexpected response type: %d\n", response.type);
-            break;
-    }
     return 0;
 }
 

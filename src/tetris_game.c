@@ -813,6 +813,7 @@ void handleCreateRoomEvents(int *quit, char *username, char *room_name, int *tim
             *quit = 1;
         } else if (e.type == SDL_KEYDOWN) {
             SDL_Keycode key = e.key.keysym.sym;
+            int shiftPressed = (SDL_GetModState() & KMOD_SHIFT);
             if (key == SDLK_TAB) {
                 *selectedField = (*selectedField + 1) % 6;
             } else if (key == SDLK_BACKSPACE) {
@@ -832,6 +833,36 @@ void handleCreateRoomEvents(int *quit, char *username, char *room_name, int *tim
 
             } else if (key >= SDLK_SPACE && key <= SDLK_z) {
                 char keyChar = (char)key;
+                if (shiftPressed) {
+                    // Map shifted characters
+                    switch (key) {
+                        case SDLK_1: keyChar = '!'; break;
+                        case SDLK_2: keyChar = '@'; break;
+                        case SDLK_3: keyChar = '#'; break;
+                        case SDLK_4: keyChar = '$'; break;
+                        case SDLK_5: keyChar = '%'; break;
+                        case SDLK_6: keyChar = '^'; break;
+                        case SDLK_7: keyChar = '&'; break;
+                        case SDLK_8: keyChar = '*'; break;
+                        case SDLK_9: keyChar = '('; break;
+                        case SDLK_0: keyChar = ')'; break;
+                        case SDLK_MINUS: keyChar = '_'; break;
+                        case SDLK_EQUALS: keyChar = '+'; break;
+                        case SDLK_LEFTBRACKET: keyChar = '{'; break;
+                        case SDLK_RIGHTBRACKET: keyChar = '}'; break;
+                        case SDLK_BACKSLASH: keyChar = '|'; break;
+                        case SDLK_SEMICOLON: keyChar = ':'; break;
+                        case SDLK_QUOTE: keyChar = '"'; break;
+                        case SDLK_COMMA: keyChar = '<'; break;
+                        case SDLK_PERIOD: keyChar = '>'; break;
+                        case SDLK_SLASH: keyChar = '?'; break;
+                        default:
+                            if (key >= SDLK_a && key <= SDLK_z) {
+                                keyChar = (char)(key - 32); // Convert to uppercase
+                            }
+                            break;
+                    }
+                }
                 if (*selectedField == 0 && strlen(username) < MAX_USERNAME - 1) {
                     strncat(username, &keyChar, 1);
                 } else if (*selectedField == 1 && strlen(room_name) < MAX_ROOM_NAME - 1) {
@@ -848,30 +879,116 @@ void handleCreateRoomEvents(int *quit, char *username, char *room_name, int *tim
     }
 }
 
-void handleJoinRoomEvents(int *quit, int *joinRoomSuccess, char *username, char *room_name, int client_fd) {
+void handleJoinRoomEvents(int *quit, char *username, char *room_name, int client_fd) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
             *quit = 1;
         } else if (e.type == SDL_KEYDOWN) {
             SDL_Keycode key = e.key.keysym.sym;
+            int shiftPressed = (SDL_GetModState() & KMOD_SHIFT);
             if (key == SDLK_RETURN) {
-                if (join_room(client_fd, username, room_name, session_id)) {
-                    *joinRoomSuccess = 1;
-                    printf("Join room success.\n");
-                } else {
-                    printf("Join room failed.\n");
-                }
-            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
+                printf("Attempting to join room: %s\n", room_name);
+                join_room(client_fd, username, room_name, session_id);
+            } else if ((key >= SDLK_SPACE && key <= SDLK_z) && strlen(room_name) < MAX_ROOM_NAME - 1) {
                 char keyChar = (char)key;
-                if (strlen(username) < MAX_USERNAME - 1) {
-                    strncat(username, &keyChar, 1);
-                } else if (strlen(room_name) < MAX_ROOM_NAME - 1) {
-                    strncat(room_name, &keyChar, 1);
-                } 
+                if (shiftPressed) {
+                    // Map shifted characters
+                    switch (key) {
+                        case SDLK_1: keyChar = '!'; break;
+                        case SDLK_2: keyChar = '@'; break;
+                        case SDLK_3: keyChar = '#'; break;
+                        case SDLK_4: keyChar = '$'; break;
+                        case SDLK_5: keyChar = '%'; break;
+                        case SDLK_6: keyChar = '^'; break;
+                        case SDLK_7: keyChar = '&'; break;
+                        case SDLK_8: keyChar = '*'; break;
+                        case SDLK_9: keyChar = '('; break;
+                        case SDLK_0: keyChar = ')'; break;
+                        case SDLK_MINUS: keyChar = '_'; break;
+                        case SDLK_EQUALS: keyChar = '+'; break;
+                        case SDLK_LEFTBRACKET: keyChar = '{'; break;
+                        case SDLK_RIGHTBRACKET: keyChar = '}'; break;
+                        case SDLK_BACKSLASH: keyChar = '|'; break;
+                        case SDLK_SEMICOLON: keyChar = ':'; break;
+                        case SDLK_QUOTE: keyChar = '"'; break;
+                        case SDLK_COMMA: keyChar = '<'; break;
+                        case SDLK_PERIOD: keyChar = '>'; break;
+                        case SDLK_SLASH: keyChar = '?'; break;
+                        default:
+                            if (key >= SDLK_a && key <= SDLK_z) {
+                                keyChar = (char)(key - 32); // Convert to uppercase
+                            }
+                            break;
+                    }
+                }
+                strncat(room_name, &keyChar, 1);
+            } else if (key == SDLK_BACKSPACE && strlen(room_name) > 0) {
+                room_name[strlen(room_name) - 1] = '\0';
+                printf("Room name: %s\n", room_name);
             }
         }
     }
+}
+
+void renderJoinRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *room_name) {
+    SDL_Color white = {255, 255, 255};
+    SDL_Color black = {0, 0, 0};
+
+    SDL_SetRenderDrawColor(renderer, black.r, black.g, black.b, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Surface *surface;
+    SDL_Texture *texture;
+    SDL_Rect rect;
+
+    // Render "Join Room" title
+    surface = TTF_RenderText_Solid(font, "Join Room", white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.x = SCREEN_WIDTH / 2 - surface->w / 2;
+    rect.y = 50;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render room name label
+    surface = TTF_RenderText_Solid(font, "Room Name:", white);
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    rect.x = SCREEN_WIDTH / 2 - surface->w / 2;
+    rect.y = 150;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render room name input
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect roomNameRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 60, 200, 30};
+    SDL_RenderDrawRect(renderer, &roomNameRect);
+    const char *roomNameText = strlen(room_name) > 0 ? room_name : "Enter room name";
+    surface = TTF_RenderText_Solid(font, roomNameText, white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = roomNameRect.x + 5;
+    rect.y = roomNameRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    SDL_RenderPresent(renderer);
 }
 
 void handleJoinRandomRoomEvents(int client_fd, char *username) {
