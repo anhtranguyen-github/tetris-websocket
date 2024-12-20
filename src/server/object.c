@@ -400,65 +400,77 @@ int find_empty_game_slot() {
 
 
 void create_online_game(PGconn *conn, int room_id) {
-    printf("Starting create_online_game\n");
+    write_to_log("Starting create_online_game");
 
     // Find an empty slot in the online_game array
     int slot = find_empty_game_slot();
     if (slot == -1) {
-        printf("No available slots for a new game. Exiting function.\n");
+        write_to_log("No available slots for a new game. Exiting function.");
         return;
     }
 
     // Generate random game ID
     int game_id = generate_random_game_id();
-    printf("Generated Game ID: %d\n", game_id);
+    char log_message[256];
+    snprintf(log_message, sizeof(log_message), "Generated Game ID: %d", game_id);
+    write_to_log(log_message);
 
     // Get room info
     RoomInfo *room_info = get_room_info(conn, room_id);
     if (room_info == NULL) {
-        printf("Failed to get room info. Exiting function.\n");
+        write_to_log("Failed to get room info. Exiting function.");
         return;
     }
-    printf("Got room info\n");
+    write_to_log("Got room info");
 
     // Get brick limit
     int brick_limit = get_brick_limit(room_info);
-    printf("Brick Limit: %d\n", brick_limit);
+    snprintf(log_message, sizeof(log_message), "Brick Limit: %d", brick_limit);
+    write_to_log(log_message);
 
     // Get room players
     RoomPlayerList *player_list = get_room_players(room_info);
     if (player_list == NULL) {
-        printf("Failed to get room players. Exiting function.\n");
-        free(room_info);  // Free previously allocated memory
+        write_to_log("Failed to get room players. Exiting function.");
+        free(room_info);
         return;
     }
 
     // Debugging the RoomPlayerList
-    printf("Got room players\n");
-    printf("Player Count: %d\n", player_list->count);
-    printf("Player Names:\n");
+    write_to_log("Got room players");
+    snprintf(log_message, sizeof(log_message), "Player Count: %d", player_list->count);
+    write_to_log(log_message);
     for (int i = 0; i < player_list->count; i++) {
-        printf("  Player %d: %s\n", i + 1, player_list->player_names[i]);
+        if (player_list->player_names[i] == NULL) {
+            snprintf(log_message, sizeof(log_message), "Error: player name at index %d is NULL", i);
+            write_to_log(log_message);
+        } else {
+            snprintf(log_message, sizeof(log_message), "  Player %d: %s", i + 1, player_list->player_names[i]);
+            write_to_log(log_message);
+        }
     }
 
-    // Generate shapes (Assume generateShapes is defined elsewhere)
+    // Generate shapes
     ShapeList shape_list;
     generateShapes(&shape_list, brick_limit);
-    printf("Generated shapes\n");
+    write_to_log("Generated shapes");
 
-    // Initialize leaderboard (Assume initLeaderboard is defined elsewhere)
+    // Initialize leaderboard
     Leaderboard leaderboard;
     initLeaderboard(&leaderboard, player_list);
-    printf("Initialized leaderboard\n");
+    write_to_log("Initialized leaderboard");
 
     // Store the game in the online_game array
     online_game[slot].game_id = game_id;
     online_game[slot].room_id = room_id;
-    printf("Game added to online_game array\n");
+    write_to_log("Game added to online_game array");
 
     // Cleanup
+    for (int i = 0; i < player_list->count; i++) {
+        free(player_list->player_names[i]);
+    }
     free(player_list->player_names);
-    free(player_list);  // Assuming free_room_player_list is defined elsewhere
-    free(room_info);  // Ensure memory is freed properly
-    printf("Online game created successfully.\n");
+    free(player_list);
+    free(room_info);
+    write_to_log("Online game created successfully.");
 }
