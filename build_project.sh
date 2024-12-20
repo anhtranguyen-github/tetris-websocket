@@ -4,6 +4,7 @@
 # start db: sudo service postgresql start
 # enter db: sudo -i -u postgres psql > \c tetris
 # gcc main.c tetris_game.c client_utils.c ultis.c -o game.o -lSDL2 -lSDL2_ttf -lpthread
+#gcc -o test_game test_object.c ../src/server/object.c ../src/ultis.c -I../src/server 
 
 # Set the project root directory
 PROJECT_ROOT=$(pwd)

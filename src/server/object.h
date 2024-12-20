@@ -5,6 +5,23 @@
 
 #include <stdlib.h>
 #include <time.h>
+#include "../protocol/protocol.h"
+#include <libpq-fe.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <libpq-fe.h>
+#include <arpa/inet.h>
+#include "../protocol/protocol.h"
+#include "../../config/client_config.h"
+#include <uuid/uuid.h>  
+#include "database.h"
+#include "object.h"
+
 #define LEADERBOARD_SIZE 8
 #define BLOCK_SIZE 30
 #define COLS 15
@@ -25,6 +42,27 @@
 
 
 
+
+typedef struct OnlineUser {
+    int user_id;                          // Unique ID of the user (from database)
+    char username[MAX_USERNAME];     // Username (max length 50)
+    char session_id[MAX_SESSION_ID]; // Session ID (max length 255)
+    int socket_fd;                       // File descriptor for the user's socket
+    struct sockaddr_in client_addr;     // Address information for the user
+    time_t last_activity;               // Timestamp of the last activity (for timeouts)
+    int is_authenticated;            // Boolean to track if the user is authenticated (1 = yes, 0 = no)
+    char ip_address[100];  
+    int port;
+    char time_buffer[100];
+    int room_id;                      
+    int is_hosting;                     
+} OnlineUser;
+
+
+extern const int ShapesArray[7][4][4];
+
+
+
 typedef struct {
     int **array;
     int width, row, col;
@@ -37,7 +75,7 @@ typedef struct {
 } ShapeList;
 
 typedef struct {
-    char name[20];
+    char name[MAX_USERNAME];
     int score;
 } LeaderboardEntry;
 
@@ -51,21 +89,67 @@ typedef struct RoomInfo{
     char room_players[ROOM_PLAYER_BUFFER_SIZE];
 } RoomInfo;
 
-RoomInfo room_infor[MAX_ROOMS];
+typedef struct RoomPlayerList {
+    char **player_names;
+    int count;
+} RoomPlayerList;
+
+
+
+typedef struct Leaderboard{
+    LeaderboardEntry entries[LEADERBOARD_SIZE];
+    int current_players; // Number of active players in the leaderboard
+} Leaderboard;
+
 
 typedef struct OnlineGame{
-    int room_id;
+    int room_id;    
     int game_id;
     ShapeList shape_list;
-    LeaderboardEntry leaderboard[LEADERBOARD_SIZE];
+    Leaderboard leaderboard;
 } OnlineGame;
 
+extern RoomInfo room_infor[MAX_ROOMS];
+extern OnlineGame online_game[MAX_GAME];
+extern OnlineUser online_users[MAX_USERS];
 
-OnlineGame online_game[MAX_GAME];
 
-void init_random_shapelist(ShapeList *list, int numbers);
-void add_online_games(int room_id);
-void update_leaderboard(int game_id, const char *player_name, int score);
+//Room infor function
+int generate_random_game_id();  
+RoomInfo *get_room_info(PGconn *conn, int room_id);  
+int get_brick_limit(RoomInfo *room_info);  
+int get_current_players(RoomInfo *room_info);  
+RoomPlayerList *get_room_players(RoomInfo *room_info);  
+void free_room_player_list(RoomPlayerList *player_list);
+
+
+
+//shape list
+Shape copyShape(const int shapeArray[4][4], int width);  
+void freeShape(Shape shape);  
+void generateShapes(ShapeList *shapeList, int number);  
+void freeShapeList(ShapeList *shapeList);  
+char* serializeShapeList(ShapeList *shapeList);  
+void deserializeShapeList(ShapeList *shapeList, const char *data);  
+
+
+
+//leaderboard 
+
+void initLeaderboard(Leaderboard *leaderboard, RoomPlayerList *player_list);
+void update_leaderboard(Leaderboard *leaderboard, const char *player, int points);
+char* serializeLeaderboard(const Leaderboard *leaderboard);
+void deserializeLeaderboard(Leaderboard *leaderboard, const char *data);
+
+//online game
+void init_online_games();
+int find_empty_game_slot();
+void create_online_game(PGconn *conn, int room_id);
+
+
+
+
+
 
 
 #endif // OBJECT_H

@@ -1,11 +1,14 @@
-// object.c
-
 #include "object.h"
 #include <string.h>
 #include <stdio.h>
-
+#include "../ultis.h"
+// Global arrays
+//RoomInfo room_infor[MAX_ROOMS];
+OnlineGame online_game[MAX_GAME];
+OnlineUser online_users[MAX_USERS];
 
 const int ShapesArray[7][4][4] = {
+    // Different Tetris shapes
     {{0,1,1,0}, {1,1,0,0}, {0,0,0,0}, {0,0,0,0}},    // S shape
     {{1,1,0,0}, {0,1,1,0}, {0,0,0,0}, {0,0,0,0}},    // Z shape
     {{0,1,0,0}, {1,1,1,0}, {0,0,0,0}, {0,0,0,0}},    // T shape
@@ -17,82 +20,445 @@ const int ShapesArray[7][4][4] = {
 
 
 
-void init_random_shapelist(ShapeList *list, int numbers) {
-    if (numbers > MAX_SHAPES) numbers = MAX_SHAPES; // Limit shapes to MAX_SHAPES
-    list->count = numbers;
-    list->current = 0;
-    srand(time(NULL)); // Seed the random number generator
 
-    for (int i = 0; i < numbers; i++) {
-        int random_shape = rand() % 7; // Select a random shape (0 to 6)
-        list->shapes[i].width = 4;
-        list->shapes[i].row = ROWS;
-        list->shapes[i].col = COLS;
+int generate_random_game_id() {
+    srand(time(NULL)); // Seed random generator
+    int game_id = rand();
+    write_to_log("Generated random game ID:");
+    write_to_log_int(game_id);
+    return game_id;
+}
 
-        // Allocate memory for shape array
-        list->shapes[i].array = (int **)malloc(4 * sizeof(int *));
-        for (int j = 0; j < 4; j++) {
-            list->shapes[i].array[j] = (int *)malloc(4 * sizeof(int));
-            for (int k = 0; k < 4; k++) {
-                list->shapes[i].array[j][k] = ShapesArray[random_shape][j][k];
+
+
+RoomInfo *get_room_info(PGconn *conn, int room_id) {
+    char query[BUFFER_SIZE];
+    PGresult *result;
+    RoomInfo *room_info = malloc(sizeof(RoomInfo));
+
+    if (!room_info) {
+        write_to_log("Failed to allocate memory for RoomInfo.");
+        return NULL;
+    }
+
+    room_info->room_id = room_id;
+
+    // Query to get room information
+    snprintf(query, BUFFER_SIZE,
+             "SELECT room_name, time_limit, brick_limit, max_players, "
+             "(SELECT COUNT(*) FROM room_players WHERE room_id = %d) AS current_players "
+             "FROM rooms WHERE room_id = %d;", 
+             room_id, room_id);
+
+    write_to_log("Executing query to get room information:");
+    write_to_log(query);
+    result = PQexec(conn, query);
+
+    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
+        write_to_log("Failed to retrieve room information.");
+        write_to_log(PQerrorMessage(conn));
+        PQclear(result);
+        free(room_info);
+        return NULL; // Indicate failure
+    }
+
+    if (PQntuples(result) == 0) {
+        write_to_log("No room found with the given room_id.");
+        PQclear(result);
+        free(room_info);
+        return NULL; // No room found
+    }
+
+    // Extract room information
+    strncpy(room_info->room_name, PQgetvalue(result, 0, 0), MAX_ROOM_NAME);
+    room_info->time_limit = atoi(PQgetvalue(result, 0, 1));
+    room_info->brick_limit = atoi(PQgetvalue(result, 0, 2));
+    room_info->max_players = atoi(PQgetvalue(result, 0, 3));
+    room_info->current_players = atoi(PQgetvalue(result, 0, 4));
+
+    PQclear(result);
+
+    // Query to get usernames of players in the room
+    snprintf(query, BUFFER_SIZE,
+             "SELECT u.username FROM room_players rp "
+             "JOIN users u ON rp.user_id = u.user_id "
+             "WHERE rp.room_id = %d;", 
+             room_id);
+
+    write_to_log("Executing query to get room players:");
+    write_to_log(query);
+    result = PQexec(conn, query);
+
+    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
+        write_to_log("Failed to retrieve room players.");
+        write_to_log(PQerrorMessage(conn));
+        PQclear(result);
+        free(room_info);
+        return NULL; // Indicate failure
+    }
+
+    room_info->room_players[0] = '\0'; // Clear the buffer
+    int player_count = PQntuples(result);
+    for (int i = 0; i < player_count; i++) {
+        if (i > 0) strncat(room_info->room_players, ", ", BUFFER_SIZE - strlen(room_info->room_players) - 1);
+        strncat(room_info->room_players, PQgetvalue(result, i, 0), BUFFER_SIZE - strlen(room_info->room_players) - 1);
+    }
+
+    write_to_log("Room players fetched successfully:");
+    write_to_log(room_info->room_players);
+    PQclear(result);
+
+    return room_info; // Return the populated struct
+}
+
+// Function to get the brick limit from a RoomInfo struct (no need for DB connection)
+int get_brick_limit(RoomInfo *room_info) {
+    if (room_info == NULL) {
+        return -1; // Indicate an error
+    }
+    return room_info->brick_limit;
+}
+
+// Function to get the current number of players from a RoomInfo struct (no need for DB connection)
+int get_current_players(RoomInfo *room_info) {
+    if (room_info == NULL) {
+        return -1; // Indicate an error
+    }
+    return room_info->current_players;
+}
+
+
+// Function to get the list of players from the RoomInfo struct
+RoomPlayerList *get_room_players(RoomInfo *room_info) {
+    // Check if room_info is valid
+    if (room_info == NULL) {
+        write_to_log("Invalid RoomInfo provided.");
+        return NULL;
+    }
+
+    // Create a RoomPlayerList to hold the player names
+    RoomPlayerList *player_list = malloc(sizeof(RoomPlayerList));
+    if (!player_list) {
+        write_to_log("Failed to allocate memory for RoomPlayerList.");
+        return NULL;
+    }
+
+    // Split room_players (stored in RoomInfo) into individual player names
+    // Assuming room_players is a comma-separated list of player names
+    char *players_str = room_info->room_players;
+    char *player_name;
+    int player_count = 0;
+    
+    // Count the number of players by checking for commas
+    char *temp = strdup(players_str);
+    char *token = strtok(temp, ", ");
+    while (token != NULL) {
+        player_count++;
+        token = strtok(NULL, ", ");
+    }
+    free(temp);
+    
+    player_list->count = player_count;
+    player_list->player_names = malloc(player_count * sizeof(char *));
+    if (!player_list->player_names) {
+        write_to_log("Failed to allocate memory for player names.");
+        free(player_list);
+        return NULL;
+    }
+
+    // Split the player names into the player_names array
+    int index = 0;
+    token = strtok(players_str, ", ");
+    while (token != NULL) {
+        player_list->player_names[index] = strdup(token);
+        if (!player_list->player_names[index]) {
+            write_to_log("Failed to duplicate a player name.");
+            for (int i = 0; i < index; i++) {
+                free(player_list->player_names[i]);
             }
+            free(player_list->player_names);
+            free(player_list);
+            return NULL;
+        }
+        index++;
+        token = strtok(NULL, ", ");
+    }
+
+    write_to_log("Room players fetched successfully.");
+    return player_list;
+}
+
+// Free function for RoomPlayerList
+void free_room_player_list(RoomPlayerList *player_list) {
+    if (!player_list) return;
+    for (int i = 0; i < player_list->count; i++) {
+        free(player_list->player_names[i]);
+    }
+    free(player_list->player_names);
+    free(player_list);
+}
+
+
+
+Shape copyShape(const int shapeArray[4][4], int width) {
+    Shape shape;
+    shape.width = width;
+    shape.row = 0;
+    shape.col = COLS / 2 - width / 2;
+    shape.array = malloc(width * sizeof(int*));
+    for (int i = 0; i < width; i++) {
+        shape.array[i] = malloc(width * sizeof(int));
+        for (int j = 0; j < width; j++) {
+            shape.array[i][j] = shapeArray[i][j];
+        }
+    }
+    return shape;
+}
+
+void freeShape(Shape shape) {
+    for (int i = 0; i < shape.width; i++) {
+        free(shape.array[i]);
+    }
+    free(shape.array);
+}
+
+void generateShapes(ShapeList *shapeList, int number) {
+    for (int i = 0; i < number; i++) {
+        int index = rand() % 7;
+        Shape newShape = copyShape(ShapesArray[index], 4);
+        if (shapeList->count < MAX_SHAPES) {
+            shapeList->shapes[shapeList->count++] = newShape;
+        } else {
+            freeShape(newShape); // Avoid memory leak if list is full
         }
     }
 }
 
-// Add an online game to the list
-void add_online_games(int room_id) {
-    for (int i = 0; i < MAX_GAME; i++) {
-        if (online_game[i].room_id == 0) { // Find an empty slot
-            online_game[i].room_id = room_id;
-            online_game[i].game_id = i + 1; // Assign a game ID
-            init_random_shapelist(&online_game[i].shape_list, 50); // Initialize with 50 random shapes
-
-            // Initialize leaderboard with empty entries
-            for (int j = 0; j < LEADERBOARD_SIZE; j++) {
-                strcpy(online_game[i].leaderboard[j].name, "");
-                online_game[i].leaderboard[j].score = 0;
-            }
-
-            printf("Online game added: Room ID = %d, Game ID = %d\n", room_id, online_game[i].game_id);
-            return;
-        }
+void freeShapeList(ShapeList *shapeList) {
+    for (int i = 0; i < shapeList->count; i++) {
+        freeShape(shapeList->shapes[i]);
     }
-    printf("No available slots for a new game.\n");
+    shapeList->count = 0;
 }
 
-// Update the leaderboard for a specific game
-void update_leaderboard(int game_id, const char *player_name, int score) {
-    if (game_id < 1 || game_id > MAX_GAME) {
-        printf("Invalid Game ID.\n");
-        return;
+// Serialize the ShapeList to a string
+char* serializeShapeList(ShapeList *shapeList) {
+    char *buffer = malloc(BUFFER_SIZE);
+    buffer[0] = '\0';
+    char temp[256];
+
+    sprintf(temp, "%d,%d\n", shapeList->count, shapeList->current);
+    strcat(buffer, temp);
+
+    for (int i = 0; i < shapeList->count; i++) {
+        Shape *shape = &shapeList->shapes[i];
+        sprintf(temp, "%d,%d,%d\n", shape->width, shape->row, shape->col);
+        strcat(buffer, temp);
+        for (int r = 0; r < shape->width; r++) {
+            for (int c = 0; c < shape->width; c++) {
+                sprintf(temp, "%d", shape->array[r][c]);
+                strcat(buffer, temp);
+                if (c < shape->width - 1) strcat(buffer, ",");
+            }
+            strcat(buffer, "\n");
+        }
     }
+    return buffer;
+}
 
-    OnlineGame *game = &online_game[game_id - 1];
+// Deserialize a string into a ShapeList
+void deserializeShapeList(ShapeList *shapeList, const char *data) {
+    freeShapeList(shapeList); // Ensure the list is empty before loading new data
 
-    // Check if this game exists
-    if (game->room_id == 0) {
-        printf("Game ID %d does not exist.\n", game_id);
-        return;
+    const char *line = data;
+    int width, row, col;
+    sscanf(line, "%d,%d\n", &shapeList->count, &shapeList->current);
+    line = strchr(line, '\n') + 1;
+
+    for (int i = 0; i < shapeList->count; i++) {
+        sscanf(line, "%d,%d,%d\n", &width, &row, &col);
+        line = strchr(line, '\n') + 1;
+
+        Shape shape;
+        shape.width = width;
+        shape.row = row;
+        shape.col = col;
+        shape.array = malloc(width * sizeof(int*));
+        for (int r = 0; r < width; r++) {
+            shape.array[r] = malloc(width * sizeof(int));
+            for (int c = 0; c < width; c++) {
+                sscanf(line, "%d,", &shape.array[r][c]);
+                line = strchr(line, c < width - 1 ? ',' : '\n') + 1;
+            }
+        }
+        shapeList->shapes[i] = shape;
     }
+}
 
-    // Insert the new score into the leaderboard
-    LeaderboardEntry new_entry;
-    strncpy(new_entry.name, player_name, sizeof(new_entry.name) - 1);
-    new_entry.name[sizeof(new_entry.name) - 1] = '\0'; // Ensure null-termination
-    new_entry.score = score;
 
-    // Find the correct position to insert and shift the rest
+
+
+
+void initLeaderboard(Leaderboard *leaderboard, RoomPlayerList *player_list) {
+    leaderboard->current_players = 0;  // Start with no scores
+
     for (int i = 0; i < LEADERBOARD_SIZE; i++) {
-        if (score > game->leaderboard[i].score) {
-            // Shift lower scores down
-            for (int j = LEADERBOARD_SIZE - 1; j > i; j--) {
-                game->leaderboard[j] = game->leaderboard[j - 1];
-            }
-            game->leaderboard[i] = new_entry;
-            printf("Leaderboard updated: Player %s, Score %d\n", player_name, score);
+        leaderboard->entries[i].name[0] = '\0';
+        leaderboard->entries[i].score = 0;
+    }
+
+    // Initialize leaderboard entries based on player_list
+    for (int i = 0; i < player_list->count && i < LEADERBOARD_SIZE; i++) {
+        strncpy(leaderboard->entries[i].name, player_list->player_names[i], MAX_USERNAME - 1);
+        leaderboard->entries[i].name[MAX_USERNAME - 1] = '\0';
+        leaderboard->entries[i].score = 0;  // Start all scores at 0
+        leaderboard->current_players++;
+    }
+}
+
+// Add or update a player in the leaderboard
+void update_leaderboard(Leaderboard *leaderboard, const char *player, int points) {
+    // Check if the player already exists
+    for (int i = 0; i < leaderboard->current_players; i++) {
+        if (strncmp(leaderboard->entries[i].name, player, MAX_USERNAME) == 0) {
+            leaderboard->entries[i].score += points; // Update existing player's score
             return;
         }
     }
-    printf("Player %s did not make it into the leaderboard.\n", player_name);
+
+    // Add new player if space is available
+    if (leaderboard->current_players < LEADERBOARD_SIZE) {
+        strncpy(leaderboard->entries[leaderboard->current_players].name, player, MAX_USERNAME - 1);
+        leaderboard->entries[leaderboard->current_players].name[MAX_USERNAME - 1] = '\0';
+        leaderboard->entries[leaderboard->current_players].score = points;
+        leaderboard->current_players++;
+    } else {
+        printf("Leaderboard is full! Cannot add player: %s\n", player);
+    }
+}
+
+// Serialize the leaderboard to a string
+char* serializeLeaderboard(const Leaderboard *leaderboard) {
+    char *buffer = malloc(BUFFER_SIZE);
+    if (buffer == NULL) {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    buffer[0] = '\0'; // Initialize buffer
+
+    char temp[64];
+    snprintf(temp, sizeof(temp), "%d\n", leaderboard->current_players);
+    strncat(buffer, temp, BUFFER_SIZE - strlen(buffer) - 1);
+
+    for (int i = 0; i < leaderboard->current_players; i++) {
+        snprintf(temp, sizeof(temp), "%s,%d\n", leaderboard->entries[i].name, leaderboard->entries[i].score);
+        strncat(buffer, temp, BUFFER_SIZE - strlen(buffer) - 1);
+    }
+
+    return buffer;
+}
+
+// Deserialize a string into a leaderboard
+void deserializeLeaderboard(Leaderboard *leaderboard, const char *data) {
+    initLeaderboard(leaderboard, &(RoomPlayerList){NULL, 0}); // Reset the leaderboard
+
+    const char *line = data;
+    sscanf(line, "%d\n", &leaderboard->current_players);
+    line = strchr(line, '\n');
+    if (!line) return; // Exit if malformed input
+    line++; // Move to the next line
+
+    for (int i = 0; i < leaderboard->current_players && i < LEADERBOARD_SIZE; i++) {
+        if (sscanf(line, "%31[^,],%d\n", leaderboard->entries[i].name, &leaderboard->entries[i].score) != 2) {
+            printf("Malformed entry found, stopping deserialization.\n");
+            break;
+        }
+        line = strchr(line, '\n');
+        if (!line) break; // Prevent null dereference
+        line++;
+    }
+}
+
+
+
+// Initialize the online_game array
+void init_online_games() {
+    for (int i = 0; i < MAX_GAME; i++) {
+        online_game[i].game_id = -1; // Mark all slots as unused
+    }
+}
+
+// Find an empty slot in the online_game array
+int find_empty_game_slot() {
+    for (int i = 0; i < MAX_GAME; i++) {
+        if (online_game[i].game_id == -1) {
+            return i; // Found an empty slot
+        }
+    }
+    return -1; // No empty slots
+}
+
+
+void create_online_game(PGconn *conn, int room_id) {
+    printf("Starting create_online_game\n");
+
+    // Find an empty slot in the online_game array
+    int slot = find_empty_game_slot();
+    if (slot == -1) {
+        printf("No available slots for a new game. Exiting function.\n");
+        return;
+    }
+
+    // Generate random game ID
+    int game_id = generate_random_game_id();
+    printf("Generated Game ID: %d\n", game_id);
+
+    // Get room info
+    RoomInfo *room_info = get_room_info(conn, room_id);
+    if (room_info == NULL) {
+        printf("Failed to get room info. Exiting function.\n");
+        return;
+    }
+    printf("Got room info\n");
+
+    // Get brick limit
+    int brick_limit = get_brick_limit(room_info);
+    printf("Brick Limit: %d\n", brick_limit);
+
+    // Get room players
+    RoomPlayerList *player_list = get_room_players(room_info);
+    if (player_list == NULL) {
+        printf("Failed to get room players. Exiting function.\n");
+        free(room_info);  // Free previously allocated memory
+        return;
+    }
+
+    // Debugging the RoomPlayerList
+    printf("Got room players\n");
+    printf("Player Count: %d\n", player_list->count);
+    printf("Player Names:\n");
+    for (int i = 0; i < player_list->count; i++) {
+        printf("  Player %d: %s\n", i + 1, player_list->player_names[i]);
+    }
+
+    // Generate shapes (Assume generateShapes is defined elsewhere)
+    ShapeList shape_list;
+    generateShapes(&shape_list, brick_limit);
+    printf("Generated shapes\n");
+
+    // Initialize leaderboard (Assume initLeaderboard is defined elsewhere)
+    Leaderboard leaderboard;
+    initLeaderboard(&leaderboard, player_list);
+    printf("Initialized leaderboard\n");
+
+    // Store the game in the online_game array
+    online_game[slot].game_id = game_id;
+    online_game[slot].room_id = room_id;
+    printf("Game added to online_game array\n");
+
+    // Cleanup
+    free(player_list->player_names);
+    free(player_list);  // Assuming free_room_player_list is defined elsewhere
+    free(room_info);  // Ensure memory is freed properly
+    printf("Online game created successfully.\n");
 }

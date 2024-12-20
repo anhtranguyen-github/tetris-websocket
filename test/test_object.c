@@ -1,28 +1,29 @@
 #include "../src/server/object.h"
-#include <string.h>
-#include <stdio.h>
-#include <time.h>
+#include "../src/ultis.h"
 
 
-// Test the functions
+
 int main() {
-    // Initialize a game
-    room_infor[0].room_id = 1;
-    strcpy(room_infor[0].room_name, "Room 1");
-    room_infor[0].brick_limit = 10;
-    strcpy(room_infor[0].room_players, "Alice,Bob,Charlie");
+    // Initialize online games
+    init_online_games();
 
-    add_online_games(1);
+    // Simulate the rest of the logic
+    PGconn *conn = PQconnectdb("dbname=tetris user=new_user password=1 host=localhost");
+    if (PQstatus(conn) != CONNECTION_OK) {
+        printf("Connection to database failed.\n");
+        PQfinish(conn);
+        return 1;
+    }
 
-    // Update leaderboard scores
-    int game_id = online_game[0].game_id;
+    int room_id = 1; 
+    create_online_game(conn, room_id);
 
-    update_leaderboard(game_id, "Alice", 10);
-    update_leaderboard(game_id, "Bob", 15);
-    update_leaderboard(game_id, "Charlie", 5);
+    room_id = 2;
+    create_online_game(conn, room_id);
 
-    // Attempt to update a non-existing player
-    update_leaderboard(game_id, "UnknownPlayer", 10);
+    room_id = 3; // Test for room_id = 1
+    create_online_game(conn, room_id);
 
+    PQfinish(conn);  // Close the database connection
     return 0;
 }
