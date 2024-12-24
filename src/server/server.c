@@ -760,7 +760,7 @@ void handleClientRequest(int clientSocket, PGconn* conn) {
                 response = handle_join_random_room(&msg, conn);
                 break;
             case START_GAME:
-                response = handle_start_game(&msg, conn);
+                //response = handle_start_game(&msg, conn);
                 break;
 
             case DISCONNECT:

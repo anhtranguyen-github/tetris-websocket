@@ -23,7 +23,6 @@ typedef enum {
     GAME_START,
     GAME_STATUS,
     DISCONNECT,
-// Broadcast when a new player joins
 } MessageType;
 // Message structure
 typedef struct {
