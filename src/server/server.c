@@ -698,9 +698,9 @@ free(room_info);
     return response;
 }
 //Message start_game_message
-//Message handle_start_game(Message *msg, PGconn *conn) {
+Message handle_start_game(Message *msg, PGconn *conn) {
 
-//}
+}
 
 
 
