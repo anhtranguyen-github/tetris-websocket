@@ -34,7 +34,7 @@
 #define MAX_CLIENTS 10
 #define MAX_ROOMS 5
 #define MAX_ROOM_NAME 32
-#define BUFFER_SIZE 1000
+#define BUFFER_SIZE 3000
 #define ROOM_PLAYER_BUFFER_SIZE 200
 #define MAX_SESSION_ID 40
 #define MAX_USERS 100
@@ -105,7 +105,8 @@ typedef struct Leaderboard{
 typedef struct OnlineGame{
     int room_id;    
     int game_id;
-    ShapeList shape_list;
+    int *shapeList;
+    int brick_limit;
     Leaderboard leaderboard;
 } OnlineGame;
 
@@ -115,7 +116,9 @@ extern OnlineUser online_users[MAX_USERS];
 
 
 //Room infor function
-int generate_random_game_id();  
+int generate_random_game_id();
+int is_user_hosting(const char *username);
+
 RoomInfo *get_room_info(PGconn *conn, int room_id);  
 int get_brick_limit(RoomInfo *room_info);  
 int get_current_players(RoomInfo *room_info);  
@@ -145,8 +148,10 @@ void deserializeLeaderboard(Leaderboard *leaderboard, const char *data);
 void init_online_games();
 int find_empty_game_slot();
 void create_online_game(PGconn *conn, int room_id);
+char* serializeOnlineGame(const OnlineGame *game); 
 
-
+//Message
+Message create_start_game_message(const OnlineGame *game);
 
 
 

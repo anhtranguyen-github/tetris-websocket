@@ -29,6 +29,14 @@ int generate_random_game_id() {
     return game_id;
 }
 
+int is_user_hosting(const char *username) {
+    for (int i = 0; i < MAX_USERS; i++) {
+        if (online_users[i].user_id != 0 && strcmp(online_users[i].username, username) == 0) {
+            return online_users[i].is_hosting;
+        }
+    }
+    return 0; // User not found or not hosting
+}
 
 
 RoomInfo *get_room_info(PGconn *conn, int room_id) {
@@ -234,6 +242,32 @@ void generateShapes(ShapeList *shapeList, int number) {
     }
 }
 
+int* generateShapesInt(int number) {
+    // Log the function entry and the requested number of shapes
+    printf("generateShapesInt: Requested number of shapes: %d\n", number);
+
+    // Allocate memory for the shape list
+    int *shapeList = (int*)malloc(number * sizeof(int));
+    if (shapeList == NULL) {
+        // Log memory allocation failure
+        printf("generateShapesInt: Memory allocation failed\n");
+        return NULL;
+    }
+    printf("generateShapesInt: Memory allocation successful\n");
+
+    // Populate the shape list with random integers between 0 and 6
+    for (int i = 0; i < number; i++) {
+        shapeList[i] = rand() % 7;
+        // Log each generated shape
+        printf("generateShapesInt: shapeList[%d] = %d\n", i, shapeList[i]);
+    }
+
+    // Log the successful completion of the function
+    printf("generateShapesInt: Shape list generation completed\n");
+    return shapeList;
+}
+
+
 void freeShapeList(ShapeList *shapeList) {
     for (int i = 0; i < shapeList->count; i++) {
         freeShape(shapeList->shapes[i]);
@@ -266,6 +300,30 @@ char* serializeShapeList(ShapeList *shapeList) {
     return buffer;
 }
 
+
+char* serializeShapeListInt(int *shapeList, int count) {
+    char *buffer = (char*)malloc(BUFFER_SIZE);
+    if (buffer == NULL) {
+        // Handle memory allocation failure
+        return NULL;
+    }
+    buffer[0] = '\0'; // Initialize the buffer as an empty string
+
+    char temp[32];
+    sprintf(temp, "%d\n", count); // Add the count as the first line
+    strcat(buffer, temp);
+
+    for (int i = 0; i < count; i++) {
+        sprintf(temp, "%d", shapeList[i]); // Convert the integer to string
+        strcat(buffer, temp); // Append the integer to the buffer
+        if (i < count - 1) {
+            strcat(buffer, ","); // Add a comma separator between elements
+        }
+    }
+    strcat(buffer, "\n"); // Add a newline at the end
+
+    return buffer;
+}
 // Deserialize a string into a ShapeList
 void deserializeShapeList(ShapeList *shapeList, const char *data) {
     freeShapeList(shapeList); // Ensure the list is empty before loading new data
@@ -451,8 +509,17 @@ void create_online_game(PGconn *conn, int room_id) {
     }
 
     // Generate shapes
-    ShapeList shape_list;
-    generateShapes(&shape_list, brick_limit);
+    int *shape_list = generateShapesInt(brick_limit);
+    if (shape_list == NULL) {
+        write_to_log("Failed to generate shapes. Exiting function.");
+        for (int i = 0; i < player_list->count; i++) {
+            free(player_list->player_names[i]);
+        }
+        free(player_list->player_names);
+        free(player_list);
+        free(room_info);
+        return;
+    }
     write_to_log("Generated shapes");
 
     // Initialize leaderboard
@@ -463,6 +530,9 @@ void create_online_game(PGconn *conn, int room_id) {
     // Store the game in the online_game array
     online_game[slot].game_id = game_id;
     online_game[slot].room_id = room_id;
+    online_game[slot].brick_limit = brick_limit;
+    online_game[slot].shapeList = shape_list;
+    online_game[slot].leaderboard = leaderboard;
     write_to_log("Game added to online_game array");
 
     // Cleanup
@@ -473,4 +543,85 @@ void create_online_game(PGconn *conn, int room_id) {
     free(player_list);
     free(room_info);
     write_to_log("Online game created successfully.");
+}
+
+
+char* serializeOnlineGame(const OnlineGame *online_game) {
+    if (online_game == NULL) {
+        write_to_log("serializeOnlineGame: online_game is NULL");
+        return NULL; // Handle null input
+    }
+    write_to_log("serializeOnlineGame: online_game is not NULL");
+
+    // Allocate buffer for serialization
+    char *buffer = (char*)malloc(BUFFER_SIZE);
+    if (buffer == NULL) {
+        write_to_log("serializeOnlineGame: Memory allocation failed for buffer");
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    buffer[0] = '\0'; // Initialize buffer as empty string
+    write_to_log("serializeOnlineGame: Buffer allocated and initialized");
+
+    // Serialize room_id and game_id
+    char temp[BUFFER_SIZE];
+    snprintf(temp, sizeof(temp), "Room ID: %d\nGame ID: %d\n", online_game->room_id, online_game->game_id);
+    strncat(buffer, temp, BUFFER_SIZE - strlen(buffer) - 1);
+    write_to_log("serializeOnlineGame: Serialized room_id and game_id");
+
+    // Serialize shapeList
+
+
+    char *shapeListStr = serializeShapeListInt(online_game->shapeList, online_game->brick_limit);
+    if (shapeListStr != NULL) {
+        strncat(buffer, "Shapes:\n", BUFFER_SIZE - strlen(buffer) - 1);
+        strncat(buffer, shapeListStr, BUFFER_SIZE - strlen(buffer) - 1);
+        free(shapeListStr);
+        write_to_log("serializeOnlineGame: Serialized shapeList successfully");
+    } else {
+        write_to_log("serializeOnlineGame: Failed to serialize shapeList");
+    }
+    // Serialize leaderboard
+    char *leaderboardStr = serializeLeaderboard(&(online_game->leaderboard));
+    if (leaderboardStr != NULL) {
+        strncat(buffer, "Leaderboard:\n", BUFFER_SIZE - strlen(buffer) - 1);
+        strncat(buffer, leaderboardStr, BUFFER_SIZE - strlen(buffer) - 1);
+        free(leaderboardStr);
+        write_to_log("serializeOnlineGame: Serialized leaderboard");
+    } else {
+        write_to_log("serializeOnlineGame: serializeLeaderboard returned NULL");
+    }
+
+    write_to_log("serializeOnlineGame: Serialization complete");
+    return buffer;
+}
+
+
+Message create_start_game_message(const OnlineGame *game) {
+    // Initialize the message
+    Message message;
+    memset(&message, 0, sizeof(Message)); // Ensure all fields are zeroed out
+
+    // Set message type
+    message.type = GAME_START;
+
+    // Populate username and room_name (these can be placeholders if not applicable)
+    snprintf(message.username, MAX_USERNAME, "System"); // Example: System message
+    snprintf(message.room_name, MAX_ROOM_NAME, "%d", game->room_id);
+
+    // Serialize the game data into the `data` field
+    char *serialized_game = serializeOnlineGame(game);
+    if (serialized_game != NULL) {
+        strncpy(message.data, serialized_game, BUFFER_SIZE - 1); // Ensure null-termination
+        message.data[BUFFER_SIZE - 1] = '\0';                   // Safety null-termination
+        free(serialized_game); // Free allocated memory for serialization
+    } else {
+        write_to_log("create_start_game_message: Failed to serialize game data");
+        strncpy(message.data, "Failed to serialize game data", BUFFER_SIZE - 1);
+        message.data[BUFFER_SIZE - 1] = '\0';
+    }
+
+    // Log the creation of the message
+    write_to_log("create_start_game_message: Message created successfully");
+    return message;
 }
