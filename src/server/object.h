@@ -124,7 +124,7 @@ int get_brick_limit(RoomInfo *room_info);
 int get_current_players(RoomInfo *room_info);  
 RoomPlayerList *get_room_players(RoomInfo *room_info);  
 void free_room_player_list(RoomPlayerList *player_list);
-
+int get_room_id_by_username(const char* username);
 
 
 //shape list
