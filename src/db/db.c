@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libpq-fe.h>
+#include <string.h>
+
 
 PGconn *connect_db() {
     // Use the default "postgres" database to connect to the server
@@ -61,6 +63,46 @@ PGconn *connect_db() {
     return tetris_conn;
 }
 
+void reinit_tetris_db() {
+    // Use the default "postgres" database to connect to the server
+    const char *conninfo = "dbname=postgres user=new_user password=1 host=localhost";
+    
+    // Connect to PostgreSQL using the "postgres" database
+    PGconn *conn = PQconnectdb(conninfo);
+
+    if (PQstatus(conn) != CONNECTION_OK) {
+        fprintf(stderr, "Connection to database server failed: %s\n", PQerrorMessage(conn));
+        PQfinish(conn);
+        exit(1);
+    }
+
+    // Drop the 'tetris' database if it exists
+    const char *drop_db_sql = "DROP DATABASE IF EXISTS tetris;";
+    PGresult *res = PQexec(conn, drop_db_sql);
+
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "Error dropping database: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        PQfinish(conn);
+        exit(1);
+    }
+    PQclear(res);
+
+    // Create the 'tetris' database
+    const char *create_db_command = "CREATE DATABASE tetris;";
+    res = PQexec(conn, create_db_command);
+
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "Error creating database: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        PQfinish(conn);
+        exit(1);
+    }
+
+    printf("Database 'tetris' reinitialized successfully.\n");
+    PQclear(res);
+    PQfinish(conn);
+}
 
 void execute_query(PGconn *conn, const char *query) {
     PGresult *res = PQexec(conn, query);
@@ -292,6 +334,10 @@ void register_user(PGconn *conn, const char *username, const char *password) {
 }
 
 int main() {
+
+
+    reinit_tetris_db(); // Reinitialize the tetris database
+
     PGconn *conn = connect_db();
 
     create_tables(conn);

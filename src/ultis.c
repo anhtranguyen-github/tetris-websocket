@@ -6,7 +6,7 @@
 
 void write_to_log(const char *message) {
     // Open the log file in append mode
-    FILE *file = fopen("log.txt", "a");
+    FILE *file = fopen("log.log", "a");
 
     // Check if the file was opened successfully
     if (file == NULL) {

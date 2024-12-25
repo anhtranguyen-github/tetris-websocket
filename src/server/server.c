@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <libpq-fe.h>
-#include "../protocol/network.c"
+#include "../protocol/network.h"
 #include "../protocol/protocol.h"
 #include "../../config/client_config.h"
 #include "../ultis.h"
@@ -15,6 +15,8 @@
 #include "object.h"
 
 int server_fd;
+extern OnlineGame online_game[MAX_GAME];
+extern OnlineUser online_users[MAX_USERS];
 
 int find_empty_slot()
 {
@@ -282,6 +284,110 @@ Message handle_login2(const Message *msg, PGconn *conn, int socket_fd, struct so
         // Invalid login
         write_to_log("6: Invalid login attempt");
         strcpy(response.data, "Login failed!");
+    }
+
+    return response;
+}
+
+int insert_user(PGconn *conn, const char *username, const char *password_hash)
+{
+    const char *query = "INSERT INTO users (username, password_hash) VALUES ($1, $2);";
+    const char *paramValues[2] = {username, password_hash};
+
+    PGresult *res = PQexecParams(conn, query, 2, NULL, paramValues, NULL, NULL, 0);
+
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
+        fprintf(stderr, "Error inserting user: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return 0; // Failure
+    }
+
+    PQclear(res);
+    return 1; // Success
+}
+
+int is_username_taken(PGconn *conn, const char *username)
+{
+    const char *query = "SELECT COUNT(*) FROM users WHERE username = $1;";
+    const char *paramValues[1] = {username};
+
+    PGresult *res = PQexecParams(conn, query, 1, NULL, paramValues, NULL, NULL, 0);
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
+        fprintf(stderr, "Error checking username: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return -1; // Indicate an error
+    }
+
+    int count = atoi(PQgetvalue(res, 0, 0));
+    PQclear(res);
+    return count > 0;
+}
+
+void register_user(PGconn *conn, const char *username, const char *password)
+{
+    // Check if the username already exists
+    if (is_username_taken(conn, username))
+    {
+        printf("The username '%s' is already taken. Please choose a different username.\n", username);
+        return;
+    }
+
+    // Check if the password length is greater than 6
+    if (strlen(password) <= 6)
+    {
+        printf("Password must be longer than 6 characters.\n");
+        return;
+    }
+
+    // Hash the password (a placeholder, replace with a real hashing function in production)
+    char password_hash[256];
+    snprintf(password_hash, sizeof(password_hash), "hashed_%s", password);
+
+    // Insert the user into the database
+    insert_user(conn, username, password_hash);
+}
+
+Message handle_register(Message *msg, PGconn *conn)
+{
+    Message response;
+    memset(&response, 0, sizeof(Message));
+
+    // Set the response message type to REGISTER by default
+    response.type = REGISTER;
+
+    // Validate the username
+    if (is_username_taken(conn, msg->username))
+    {
+        response.type = REGISTER_FAILURE;
+        snprintf(response.data, sizeof(response.data), "The username '%s' is already taken.", msg->username);
+        return response;
+    }
+
+    // Validate the password length
+    if (strlen(msg->data) <= 6)
+    {
+        response.type = REGISTER_FAILURE;
+        snprintf(response.data, sizeof(response.data), "Password must be longer than 6 characters.");
+        return response;
+    }
+
+    // Hash the password (a placeholder hashing mechanism)
+    char password_hash[BUFFER_SIZE + 10];
+    snprintf(password_hash, sizeof(password_hash), "hashed_%s", msg->data);
+
+    // Try to register the user in the database
+    if (insert_user(conn, msg->username, password_hash))
+    {
+        response.type = REGISTER_SUCCESS;
+        snprintf(response.data, sizeof(response.data), "User '%s' registered successfully.", msg->username);
+    }
+    else
+    {
+        response.type = REGISTER_FAILURE;
+        snprintf(response.data, sizeof(response.data), "Failed to register the user. Please try again later.");
     }
 
     return response;
@@ -729,30 +835,56 @@ Message handle_join_random_room(Message *msg, PGconn *conn)
     return response;
 }
 
-// Message start_game_message
+
+
+
+
 Message handle_start_game(Message *msg, PGconn *conn)
 {
     Message response;
 
+    // Log the start of the function
+    write_to_log("handle_start_game called.");
+    write_to_log("Received message:");
+    write_to_log(msg->username);
+
+
     // Set response defaults
-    response.type = START_GAME;
+    response.type = START_GAME_FAILURE; // Default to failure
     strncpy(response.username, "system", MAX_USERNAME);
     response.username[MAX_USERNAME - 1] = '\0'; // Ensure null-termination
+
+    // Log the username and default response type
+    write_to_log("Default response initialized. Type set to START_GAME_FAILURE.");
+    write_to_log("Default username set to 'system'.");
 
     // Check if the user is hosting the room
     if (!is_user_hosting(msg->username))
     {
         snprintf(response.data, BUFFER_SIZE, "Only the host can start the game.");
+        write_to_log("User is not the host. Exiting with message:");
+        write_to_log(response.data);
         return response;
     }
 
+    // Log that the user is hosting
+    write_to_log("User is the host. Proceeding to get room ID.");
+
     // Get the room ID associated with the user's username
     int room_id = get_room_id_by_username(msg->username);
+    write_to_log("Retrieved room ID:");
+    write_to_log_int(room_id);
+
     if (room_id == -1)
     {
         snprintf(response.data, BUFFER_SIZE, "Room not found for the user.");
+        write_to_log("Room ID not found. Exiting with message:");
+        write_to_log(response.data);
         return response;
     }
+
+    // Log the creation of the online game
+    write_to_log("Room ID found. Creating online game...");
     create_online_game(conn, room_id);
 
     int game_slot = -1;
@@ -765,9 +897,14 @@ Message handle_start_game(Message *msg, PGconn *conn)
         }
     }
 
+    write_to_log("Checked online game slots. Game slot found:");
+    write_to_log_int(game_slot);
+
     if (game_slot == -1)
     {
-        printf("Online game not found for room ID: %d\n", room_id);
+        snprintf(response.data, BUFFER_SIZE, "Online game not found for room ID: %d", room_id);
+        write_to_log("Online game not found. Exiting with message:");
+        write_to_log(response.data);
     }
     else
     {
@@ -775,19 +912,28 @@ Message handle_start_game(Message *msg, PGconn *conn)
         char *serialized_game = serializeOnlineGame(&online_game[game_slot]);
         if (serialized_game != NULL)
         {
-            printf("Serialized Online Game:\n%s\n", serialized_game);
+            write_to_log("Serialized Online Game:");
+            write_to_log(serialized_game);
             free(serialized_game);
+
+            // Set response type to success
+            response.type = START_GAME_SUCCESS;
+            snprintf(response.data, BUFFER_SIZE, "Game started successfully.");
+            write_to_log("Game started successfully. Response type set to START_GAME_SUCCESS.");
         }
         else
         {
-            printf("Failed to serialize online game.\n");
+            write_to_log("Failed to serialize online game.");
         }
 
         // Create a start game message
         Message startGameMessage = create_start_game_message(&online_game[game_slot]);
-
-        return startGameMessage;
+        write_to_log("Start game message created successfully.");
+        broadcast_message_to_room(room_id, &startGameMessage);
+        return response;
     }
+
+    return response;
 }
 
 // Periodically clean up expired sessions in the database
@@ -826,6 +972,10 @@ void handleClientRequest(int clientSocket, PGconn *conn)
 
         switch (msg.type)
         {
+        case REGISTER:
+            response = handle_register(&msg, conn);
+            send(clientSocket, &response, sizeof(Message), 0);
+            break;
         case LOGIN:
             response = handle_login2(&msg, conn, clientSocket, client_addr);
             // response = handle_login(&msg, conn);  // Handle login and generate session (cookie)
@@ -847,7 +997,8 @@ void handleClientRequest(int clientSocket, PGconn *conn)
             send(clientSocket, &response, sizeof(Message), 0);
             break;
         case START_GAME:
-            // response = handle_start_game(&msg, conn);
+            response = handle_start_game(&msg, conn);
+            send(clientSocket, &response, sizeof(Message), 0);
             break;
 
         case DISCONNECT:
@@ -901,6 +1052,9 @@ int main()
 {
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
+
+    init_online_games();
+    printf("Initialized online game slots.\n");
 
     startServer();
 
