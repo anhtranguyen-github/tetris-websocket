@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libpq-fe.h>
+#include <string.h>
+
 
 PGconn *connect_db() {
     // Use the default "postgres" database to connect to the server
@@ -61,6 +63,46 @@ PGconn *connect_db() {
     return tetris_conn;
 }
 
+void reinit_tetris_db() {
+    // Use the default "postgres" database to connect to the server
+    const char *conninfo = "dbname=postgres user=new_user password=1 host=localhost";
+    
+    // Connect to PostgreSQL using the "postgres" database
+    PGconn *conn = PQconnectdb(conninfo);
+
+    if (PQstatus(conn) != CONNECTION_OK) {
+        fprintf(stderr, "Connection to database server failed: %s\n", PQerrorMessage(conn));
+        PQfinish(conn);
+        exit(1);
+    }
+
+    // Drop the 'tetris' database if it exists
+    const char *drop_db_sql = "DROP DATABASE IF EXISTS tetris;";
+    PGresult *res = PQexec(conn, drop_db_sql);
+
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "Error dropping database: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        PQfinish(conn);
+        exit(1);
+    }
+    PQclear(res);
+
+    // Create the 'tetris' database
+    const char *create_db_command = "CREATE DATABASE tetris;";
+    res = PQexec(conn, create_db_command);
+
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "Error creating database: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        PQfinish(conn);
+        exit(1);
+    }
+
+    printf("Database 'tetris' reinitialized successfully.\n");
+    PQclear(res);
+    PQfinish(conn);
+}
 
 void execute_query(PGconn *conn, const char *query) {
     PGresult *res = PQexec(conn, query);
@@ -252,7 +294,50 @@ void update_game_status(PGconn *conn, int game_id, int status) {
 }
 
 
+
+int is_username_taken(PGconn *conn, const char *username) {
+    const char *query = "SELECT COUNT(*) FROM users WHERE username = $1;";
+    const char *paramValues[1] = {username};
+    
+    PGresult *res = PQexecParams(conn, query, 1, NULL, paramValues, NULL, NULL, 0);
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "Error checking username: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return -1; // Indicate an error
+    }
+
+    int count = atoi(PQgetvalue(res, 0, 0));
+    PQclear(res);
+    return count > 0;
+}
+
+void register_user(PGconn *conn, const char *username, const char *password) {
+    // Check if the username already exists
+    if (is_username_taken(conn, username)) {
+        printf("The username '%s' is already taken. Please choose a different username.\n", username);
+        return;
+    }
+
+    // Check if the password length is greater than 6
+    if (strlen(password) <= 6) {
+        printf("Password must be longer than 6 characters.\n");
+        return;
+    }
+
+    // Hash the password (a placeholder, replace with a real hashing function in production)
+    char password_hash[256];
+    snprintf(password_hash, sizeof(password_hash), "hashed_%s", password);
+
+    // Insert the user into the database
+    insert_user(conn, username, password_hash);
+}
+
 int main() {
+
+
+    reinit_tetris_db(); // Reinitialize the tetris database
+
     PGconn *conn = connect_db();
 
     create_tables(conn);

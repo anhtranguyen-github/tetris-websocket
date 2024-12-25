@@ -15,17 +15,43 @@ set(INCLUDE_DIR ${SRC_DIR}/include)
 set(DB_DIR ${SRC_DIR}/db)  # Add directory for database sources
 
 # Add the executable for the server with PostgreSQL and UUID dependencies
-add_executable(server ${SRC_DIR}/server/server.c ${SRC_DIR}/ultis.c)
-target_include_directories(server PRIVATE ${PROTOCOL_DIR} /usr/include/postgresql)
-target_link_libraries(server PRIVATE pthread pq uuid)  # Link with pthread, libpq, and libuuid
+add_executable(server 
+    ${SRC_DIR}/server/server.c 
+    ${SRC_DIR}/ultis.c 
+    ${PROTOCOL_DIR}/network.c 
+    ${PROTOCOL_DIR}/protocol.h 
+    ${SRC_DIR}/server/database.h 
+    ${SRC_DIR}/server/object.h
+)
+
+# Include directories for server
+target_include_directories(server PRIVATE 
+    ${PROTOCOL_DIR}          # Protocol-related headers
+    ${SRC_DIR}/server        # Server-specific headers
+    ${SRC_DIR}/config        # Configuration headers
+    /usr/include/postgresql  # PostgreSQL headers
+)
+
+# Link required libraries for server
+target_link_libraries(server PRIVATE 
+    pthread    # Multithreading support
+    pq         # PostgreSQL client library
+    uuid       # UUID generation
+)
 
 # Add the executable for the test client menu
-add_executable(test_client_menu ${SRC_DIR}/client/test_client_menu.c ${PROTOCOL_DIR}/protocol.h)
+add_executable(test_client_menu 
+    ${SRC_DIR}/client/test_client_menu.c 
+    ${PROTOCOL_DIR}/protocol.h
+)
 target_include_directories(test_client_menu PRIVATE ${PROTOCOL_DIR})
 target_link_libraries(test_client_menu PRIVATE pthread)
 
 # Add the executable for the Tetris offline game
-add_executable(tetris_offline ${SRC_DIR}/main.c ${SRC_DIR}/tetris_game.c)
+add_executable(tetris_offline 
+    ${SRC_DIR}/main.c 
+    ${SRC_DIR}/tetris_game.c
+)
 target_include_directories(tetris_offline PRIVATE ${SRC_DIR} ${INCLUDE_DIR})
 target_link_libraries(tetris_offline PRIVATE pthread SDL2 SDL2_ttf)
 

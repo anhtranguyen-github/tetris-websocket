@@ -7,6 +7,7 @@
 OnlineGame online_game[MAX_GAME];
 OnlineUser online_users[MAX_USERS];
 
+
 const int ShapesArray[7][4][4] = {
     // Different Tetris shapes
     {{0,1,1,0}, {1,1,0,0}, {0,0,0,0}, {0,0,0,0}},    // S shape
@@ -126,7 +127,15 @@ int get_brick_limit(RoomInfo *room_info) {
     }
     return room_info->brick_limit;
 }
-
+int get_room_id_by_username(const char* username) {
+    for (int i = 0; i < MAX_USERS; ++i) {
+        // Check if the username matches and is not an empty string
+        if (online_users[i].username[0] != '\0' && strcmp(online_users[i].username, username) == 0) {
+            return online_users[i].room_id;
+        }
+    }
+    return -1; // Return -1 if the username is not found
+}
 // Function to get the current number of players from a RoomInfo struct (no need for DB connection)
 int get_current_players(RoomInfo *room_info) {
     if (room_info == NULL) {
@@ -603,7 +612,7 @@ Message create_start_game_message(const OnlineGame *game) {
     memset(&message, 0, sizeof(Message)); // Ensure all fields are zeroed out
 
     // Set message type
-    message.type = GAME_START;
+    message.type = START_GAME_SUCCESS;
 
     // Populate username and room_name (these can be placeholders if not applicable)
     snprintf(message.username, MAX_USERNAME, "System"); // Example: System message

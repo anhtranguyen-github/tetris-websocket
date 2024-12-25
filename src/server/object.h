@@ -109,13 +109,14 @@ typedef struct OnlineGame{
     int brick_limit;
     Leaderboard leaderboard;
 } OnlineGame;
+// Declare variables as extern
 
-extern RoomInfo room_infor[MAX_ROOMS];
 extern OnlineGame online_game[MAX_GAME];
 extern OnlineUser online_users[MAX_USERS];
 
 
-//Room infor function
+
+//Room infor function   
 int generate_random_game_id();
 int is_user_hosting(const char *username);
 
@@ -124,7 +125,7 @@ int get_brick_limit(RoomInfo *room_info);
 int get_current_players(RoomInfo *room_info);  
 RoomPlayerList *get_room_players(RoomInfo *room_info);  
 void free_room_player_list(RoomPlayerList *player_list);
-
+int get_room_id_by_username(const char* username);
 
 
 //shape list
