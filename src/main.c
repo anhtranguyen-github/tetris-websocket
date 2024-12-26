@@ -284,22 +284,8 @@ int main() {
                                     renderJoinRoomScreen(renderer, font, room_name);
                                 }
 
-                                if (joinRoomSuccess) {
-                                    // Initialize waiting room data
-                                    strncpy(currentRoomName, room_name, MAX_ROOM_NAME);
-                                    currentTimeLimit = time_limit;
-                                    currentBrickLimit = brick_limit;
-                                    currentMaxPlayers = max_player;
-                                    snprintf(currentRoomPlayers, sizeof(currentRoomPlayers), "%s", username); // Add creator as the first player
-                                    createRoomSuccess = 0;
-                                    // Transition to the waiting room screen
-                                    currentScreen = WAITING_ROOM_SCREEN;
-                                }
-
-
                             } else if (strcmp(buttons[i].text, "Quick Join") == 0) {
                                 // Handle quick join
-
                                 handleJoinRandomRoomEvents(client_fd, username);
                             }
                         }
