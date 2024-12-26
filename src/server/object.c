@@ -634,3 +634,65 @@ Message create_start_game_message(const OnlineGame *game) {
     write_to_log("create_start_game_message: Message created successfully");
     return message;
 }
+ShapeList shapeList;
+
+void get_shape_list_int(int* shapeList, const Message* message) {
+    if (message == NULL || shapeList == NULL) {
+        write_to_log("get_shape_list_int: Invalid input parameters");
+        return;
+    }
+
+    // Find the "Shapes:" section in the message data
+    const char *shapes_section = strstr(message->data, "Shapes:\n");
+    if (shapes_section == NULL) {
+        write_to_log("get_shape_list_int: Shapes section not found in message data");
+        return;
+    }
+
+    // Move the pointer to the start of the shape list length
+    shapes_section += strlen("Shapes:\n");
+
+    // Extract the count of shapes
+    int count;
+    sscanf(shapes_section, "%d\n", &count);
+
+    // Move the pointer to the start of the shape list data
+    const char *shape_data = strchr(shapes_section, '\n') + 1;
+
+    // Extract the shape list integers
+    for (int i = 0; i < count; i++) {
+        sscanf(shape_data, "%d", &shapeList[i]);
+        shape_data = strchr(shape_data, ',');
+        if (shape_data != NULL) {
+            shape_data++;
+        }
+    }
+
+    // Add -1 at the end of the shape list
+    shapeList[count] = -1;
+
+    write_to_log("get_shape_list_int: Shape list extracted successfully");
+}
+
+
+void convertIntToShapeList(int* shapeListInt) {
+    shapeList.count = 0;
+    shapeList.current = 0;
+
+    int i = 0;
+    while (shapeListInt[i] != -1) {
+        Shape shape;
+        shape.width = 4;
+        shape.row = 4;
+        shape.col = 4;
+        shape.array = malloc(4 * sizeof(int*));
+        for (int j = 0; j < 4; j++) {
+            shape.array[j] = malloc(4 * sizeof(int));
+            for (int k = 0; k < 4; k++) {
+                shape.array[j][k] = ShapesArray[shapeListInt[i]][j][k];
+            }
+        }
+        shapeList.shapes[shapeList.count++] = shape;
+        i++;
+    }
+}

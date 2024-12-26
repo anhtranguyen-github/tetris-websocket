@@ -153,7 +153,7 @@ char* serializeOnlineGame(const OnlineGame *game);
 
 //Message
 Message create_start_game_message(const OnlineGame *game);
-
+void get_shape_list_int(int* shapeList, const Message* message);
 
 
 

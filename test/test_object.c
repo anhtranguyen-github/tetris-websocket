@@ -55,7 +55,17 @@ int main() {
         printf("  Username: %s\n", startGameMessage.username);
         printf("  Room Name: %s\n", startGameMessage.room_name);
         printf("  Data:\n%s\n", startGameMessage.data);
-    }
+
+        int shapeListInt[200];
+        get_shape_list_int(shapeListInt, &startGameMessage);
+
+        // Verify the extracted shape list
+        printf("Shape list: ");
+        for (int i = 0; i < 200; i++) {
+            printf("%d ", shapeListInt[i]);
+        }
+        printf("\n");
+        }
 
     // Cleanup
     PQfinish(conn);  // Close the database connection

@@ -8,6 +8,8 @@
 #include "protocol/network.h"
 #include "protocol/protocol.h"
 #include "ultis.h"
+#include <pthread.h>
+#include <unistd.h> // Add this line
 
 #define SCREEN_WIDTH  800  // or whatever value you need
 #define SCREEN_HEIGHT 600  // or whatever value you need
@@ -55,6 +57,91 @@ int currentBrickLimit;
 int currentMaxPlayers;
 char currentRoomPlayers[BUFFER_SIZE];
 ScreenState currentScreen;
+
+
+
+
+
+
+
+
+
+
+
+void get_shape_list_int(int* shapeList, const Message* message) {
+    if (message == NULL || shapeList == NULL) {
+        write_to_log("get_shape_list_int: Invalid input parameters");
+        return;
+    }
+
+    // Find the "Shapes:" section in the message data
+    const char *shapes_section = strstr(message->data, "Shapes:\n");
+    if (shapes_section == NULL) {
+        write_to_log("get_shape_list_int: Shapes section not found in message data");
+        return;
+    }
+
+    // Move the pointer to the start of the shape list length
+    shapes_section += strlen("Shapes:\n");
+
+    // Extract the count of shapes
+    int count;
+    sscanf(shapes_section, "%d\n", &count);
+
+    // Move the pointer to the start of the shape list data
+    const char *shape_data = strchr(shapes_section, '\n') + 1;
+
+    // Extract the shape list integers
+    for (int i = 0; i < count; i++) {
+        sscanf(shape_data, "%d", &shapeList[i]);
+        shape_data = strchr(shape_data, ',');
+        if (shape_data != NULL) {
+            shape_data++;
+        }
+    }
+
+    // Add -1 at the end of the shape list
+    shapeList[count] = -1;
+
+    write_to_log("get_shape_list_int: Shape list extracted successfully");
+}
+
+
+void convertIntToShapeList(int* shapeListInt) {
+    shapeList.count = 0;
+    shapeList.current = 0;
+
+    int i = 0;
+    while (shapeListInt[i] != -1) {
+        Shape shape;
+        shape.width = 4;
+        shape.row = 4;
+        shape.col = 4;
+        shape.array = malloc(4 * sizeof(int*));
+        for (int j = 0; j < 4; j++) {
+            shape.array[j] = malloc(4 * sizeof(int));
+            for (int k = 0; k < 4; k++) {
+                shape.array[j][k] = ShapesArray[shapeListInt[i]][j][k];
+            }
+        }
+        shapeList.shapes[shapeList.count++] = shape;
+        i++;
+    }
+}
+
+
+int shapeListInt[MAX_SHAPES * 16];
+
+
+
+
+
+
+
+
+
+
+
 
 void handleServerMessages(int client_fd) {
     Message response;
@@ -106,6 +193,8 @@ void handleServerMessages(int client_fd) {
 
             case START_GAME_SUCCESS:
                 printf("Server: %s\n", response.data);
+                get_shape_list_int(shapeListInt, &response);
+
                 startGame = 1;
                 write_to_log("Received START_GAME_SUCCESS response from server.");
                 break;
@@ -128,8 +217,9 @@ void* serverMessageThread(void* arg) {
 }
 
 void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers) {
-    initShapeList();
-    generateShapes(brick_limit);
+    //initShapeList();
+    //generateShapes(brick_limit);
+    convertIntToShapeList(shapeListInt);
     newRandomShape2();
 
     // Main game loop
