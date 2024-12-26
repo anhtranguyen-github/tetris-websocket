@@ -73,3 +73,27 @@ int start_game(int client_fd, const char* userName) {
 
     return 0;
 }
+
+int register_user(int client_fd, const char* username, const char* password) {
+    Message msg = {REGISTER, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+    strncpy(msg.data, password, BUFFER_SIZE);
+
+    send(client_fd, &msg, sizeof(Message), 0);
+
+    Message response;
+    recv(client_fd, &response, sizeof(Message), 0);
+
+    if (response.type == REGISTER_SUCCESS) {
+        printf("Registration successful! Welcome, %s.\n", username);
+        return 1;
+    }
+    else if (response.type == REGISTER_FAILURE) {
+        printf("Registration failed: %s\n", response.data);
+        return 0;
+    }
+    else {
+        printf("Unexpected response type: %d\n", response.type);
+        return 0;
+    }
+}

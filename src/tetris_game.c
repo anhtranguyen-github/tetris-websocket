@@ -383,6 +383,9 @@ void updatePlayerScore(int newScore) {
     leaderboard[0].score = newScore;
 }
 
+//Declare Register button Globally
+SDL_Rect registerRect;
+
 void renderLoginScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *password, int usernameSelected) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -491,7 +494,291 @@ void renderLoginScreen(SDL_Renderer *renderer, TTF_Font *font, const char *usern
     SDL_RenderCopy(renderer, texture, NULL, &rect);
     SDL_DestroyTexture(texture);
 
+    // Render register button
+    surface = TTF_RenderText_Solid(font, "Register", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    registerRect.x = SCREEN_WIDTH / 2 - 100;
+    registerRect.y = SCREEN_HEIGHT / 2 + 50;
+    registerRect.w = 200;
+    registerRect.h = 30;
+
+    SDL_RenderDrawRect(renderer, &registerRect);
+    rect.x = registerRect.x + 5;
+    rect.y = registerRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
     SDL_RenderPresent(renderer);
+}
+
+void renderRegisterScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *password, const char *confirmPassword, int selectedField) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gray = {128, 128, 128, 255};
+
+    SDL_Surface *surface;
+    SDL_Texture *texture;
+    SDL_Rect rect;
+
+    // Render username label
+    surface = TTF_RenderText_Solid(font, "Username:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 - 100;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render username input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect usernameRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 70, 200, 30};
+    SDL_RenderDrawRect(renderer, &usernameRect);
+    const char *usernameText = strlen(username) > 0 ? username : "Enter username";
+    SDL_Color usernameColor = strlen(username) > 0 ? (selectedField == 0 ? white : gray) : gray;
+    surface = TTF_RenderText_Solid(font, usernameText, usernameColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = usernameRect.x + 5;
+    rect.y = usernameRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render password label
+    surface = TTF_RenderText_Solid(font, "Password:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 - 30;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render password input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect passwordRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, 200, 30};
+    SDL_RenderDrawRect(renderer, &passwordRect);
+    const char *passwordText = strlen(password) > 0 ? password : "Enter password";
+    SDL_Color passwordColor = strlen(password) > 0 ? (selectedField == 1 ? white : gray) : gray;
+    char passwordDisplay[MAX_PASSWORD];
+    if (strlen(password) > 0) {
+        memset(passwordDisplay, '*', strlen(password));
+        passwordDisplay[strlen(password)] = '\0';
+    } else {
+        strcpy(passwordDisplay, passwordText);
+    }
+    surface = TTF_RenderText_Solid(font, passwordDisplay, passwordColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = passwordRect.x + 5;
+    rect.y = passwordRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render confirm password label
+    surface = TTF_RenderText_Solid(font, "Confirm Password:", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = SCREEN_WIDTH / 2 - 100;
+    rect.y = SCREEN_HEIGHT / 2 + 40;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render confirm password input box
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect confirmPasswordRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 70, 200, 30};
+    SDL_RenderDrawRect(renderer, &confirmPasswordRect);
+    const char *confirmPasswordText = strlen(confirmPassword) > 0 ? confirmPassword : "Confirm password";
+    SDL_Color confirmPasswordColor = strlen(confirmPassword) > 0 ? (selectedField == 2 ? white : gray) : gray;
+    char confirmPasswordDisplay[MAX_PASSWORD];
+    if (strlen(confirmPassword) > 0) {
+        memset(confirmPasswordDisplay, '*', strlen(confirmPassword));
+        confirmPasswordDisplay[strlen(confirmPassword)] = '\0';
+    } else {
+        strcpy(confirmPasswordDisplay, confirmPasswordText);
+    }
+    surface = TTF_RenderText_Solid(font, confirmPasswordDisplay, confirmPasswordColor);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    rect.x = confirmPasswordRect.x + 5;
+    rect.y = confirmPasswordRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    // Render register button
+    surface = TTF_RenderText_Solid(font, "Register", white);
+    if (!surface) {
+        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
+        return;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+    SDL_Rect registerRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 110, 200, 30};
+    SDL_RenderDrawRect(renderer, &registerRect);
+    rect.x = registerRect.x + 5;
+    rect.y = registerRect.y + 5;
+    rect.w = surface->w;
+    rect.h = surface->h;
+    SDL_FreeSurface(surface);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_DestroyTexture(texture);
+
+    SDL_RenderPresent(renderer);
+}
+
+void handleRegisterEvents(int *quit, int *registerSuccess, char *username, char *password, char *confirmPassword, int *selectedField, int client_fd) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode key = e.key.keysym.sym;
+            int shiftPressed = (SDL_GetModState() & KMOD_SHIFT);
+            if (key == SDLK_TAB) {
+                *selectedField = (*selectedField + 1) % 3;
+            } else if (key == SDLK_BACKSPACE) {
+                if (*selectedField == 0 && strlen(username) > 0) {
+                    username[strlen(username) - 1] = '\0';
+                } else if (*selectedField == 1 && strlen(password) > 0) {
+                    password[strlen(password) - 1] = '\0';
+                } else if (*selectedField == 2 && strlen(confirmPassword) > 0) {
+                    confirmPassword[strlen(confirmPassword) - 1] = '\0';
+                }
+            } else if (key == SDLK_RETURN) {
+                if (strcmp(password, confirmPassword) == 0) {
+                    if (register_user(client_fd, username, password)) {
+                        *registerSuccess = 1;
+                        printf("Register success.\n");
+                    } else {
+                        printf("Register failed.\n");
+                    }
+                } else {
+                    printf("Passwords do not match.\n");
+                }
+            } else if (key >= SDLK_SPACE && key <= SDLK_z) {
+                char keyChar = (char)key;
+                if (shiftPressed) {
+                    // Map shifted characters
+                    switch (key) {
+                        case SDLK_1: keyChar = '!'; break;
+                        case SDLK_2: keyChar = '@'; break;
+                        case SDLK_3: keyChar = '#'; break;
+                        case SDLK_4: keyChar = '$'; break;
+                        case SDLK_5: keyChar = '%'; break;
+                        case SDLK_6: keyChar = '^'; break;
+                        case SDLK_7: keyChar = '&'; break;
+                        case SDLK_8: keyChar = '*'; break;
+                        case SDLK_9: keyChar = '('; break;
+                        case SDLK_0: keyChar = ')'; break;
+                        case SDLK_MINUS: keyChar = '_'; break;
+                        case SDLK_EQUALS: keyChar = '+'; break;
+                        case SDLK_LEFTBRACKET: keyChar = '{'; break;
+                        case SDLK_RIGHTBRACKET: keyChar = '}'; break;
+                        case SDLK_BACKSLASH: keyChar = '|'; break;
+                        case SDLK_SEMICOLON: keyChar = ':'; break;
+                        case SDLK_QUOTE: keyChar = '"'; break;
+                        case SDLK_COMMA: keyChar = '<'; break;
+                        case SDLK_PERIOD: keyChar = '>'; break;
+                        case SDLK_SLASH: keyChar = '?'; break;
+                        default:
+                            if (key >= SDLK_a && key <= SDLK_z) {
+                                keyChar = (char)(key - 32); // Convert to uppercase
+                            }
+                            break;
+                    }
+                }
+                if (*selectedField == 0 && strlen(username) < MAX_USERNAME - 1) {
+                    strncat(username, &keyChar, 1);
+                } else if (*selectedField == 1 && strlen(password) < MAX_PASSWORD - 1) {
+                    strncat(password, &keyChar, 1);
+                } else if (*selectedField == 2 && strlen(confirmPassword) < MAX_PASSWORD - 1) {
+                    strncat(confirmPassword, &keyChar, 1);
+                }
+            }
+        }
+    }
 }
 
 void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *password, int *usernameSelected, int client_fd) {
@@ -499,6 +786,14 @@ void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *passw
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
             *quit = 1;
+        } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+
+                    if (x >= registerRect.x && x <= (registerRect.x + registerRect.w) &&
+                        y >= registerRect.y && y <= (registerRect.y + registerRect.h)) {
+                        printf("Register button clicked!\n");
+                    }
         } else if (e.type == SDL_KEYDOWN) {
             SDL_Keycode key = e.key.keysym.sym;
             int shiftPressed = (SDL_GetModState() & KMOD_SHIFT);
@@ -1095,4 +1390,6 @@ void handleWaitingRoomEvents(int *quit, int client_fd, const char *username) {
         }
     }
 }
+
+
 
