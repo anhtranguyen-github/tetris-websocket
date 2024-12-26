@@ -26,6 +26,8 @@ int loginSuccess = 0;
 int createRoomSuccess = 0;
 int joinRoomSuccess = 0;
 int selectedField = 0;
+int startGame = 0;
+
 
 
 void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
@@ -93,12 +95,23 @@ void handleServerMessages(int client_fd) {
             case ROOM_FULL:
                 printf("Room is full: %s\n", response.data);
                 break;
+
             case PLAYER_JOINED:
                 printf("Another player joined: %s\n", response.data);
                 break;               
 
             case GAME_ALREADY_STARTED:
                 printf("Game already started in room: %s\n", response.data);
+                break;
+
+            case START_GAME_SUCCESS:
+                printf("Server: %s\n", response.data);
+                startGame = 1;
+                write_to_log("Received START_GAME_SUCCESS response from server.");
+                break;
+            case START_GAME_FAILURE:
+                printf("Server: %s\n", response.data);
+                ("Failed to start the game: %s\n", response.data);
                 break;
 
             default:
@@ -296,8 +309,7 @@ int main() {
                 renderMenu(renderer, font, buttons, 3);
             } else if (currentScreen == WAITING_ROOM_SCREEN) {
                 write_to_log("Into the wait room...");
-                int startGame = 0;
-                handleWaitingRoomEvents(&quit, &startGame);
+                handleWaitingRoomEvents(&quit, client_fd, username);
                 renderWaitingRoom(renderer, font, currentRoomName, currentTimeLimit, currentBrickLimit, currentMaxPlayers, currentRoomPlayers);
                 // waiting room, then someone (or the host) press Enter
                     // Right now everyone gets the: "Press Enter to start Game" text

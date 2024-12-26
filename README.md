@@ -7,7 +7,7 @@
    ```
 2. Run the following command to compile the server:
    ```bash
-   gcc -o server server.c ../ultis.c object.c ../protocol/network.c \
+   gcc -o server.o server.c ../ultis.c object.c ../protocol/network.c \
        -I../protocol -I../../config -I../ -I/usr/include/postgresql \
        -L/usr/lib -lpthread -lpq -luuid
    ```

@@ -1075,7 +1075,7 @@ void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_
     SDL_RenderPresent(renderer);
 }
 
-void handleWaitingRoomEvents(int *quit, int *startGame) {
+void handleWaitingRoomEvents(int *quit, int client_fd, const char *username) {
     SDL_Event e;
     write_to_log("Enter handle Wait Room...");
     while (SDL_PollEvent(&e)) {
@@ -1086,7 +1086,7 @@ void handleWaitingRoomEvents(int *quit, int *startGame) {
             switch (key)
             {
             case SDLK_RETURN:
-                *startGame = 1;
+                start_game(client_fd, username);
                 break;
             default:
                 write_to_log_int(key);

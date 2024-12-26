@@ -59,3 +59,17 @@ int join_random_room(int client_fd, const char *username, const char *session_id
 
     return 0;
 }
+
+int start_game(int client_fd, const char* userName) {
+    Message msg;
+    msg.type = START_GAME;
+    strncpy(msg.username, userName, MAX_USERNAME);
+
+    // Send the start game request to the server
+    if (send(client_fd, &msg, sizeof(msg), 0) < 0) {
+        perror("Failed to send start game request");
+        return 1;
+    }
+
+    return 0;
+}

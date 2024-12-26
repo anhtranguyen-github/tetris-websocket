@@ -75,6 +75,6 @@ void handleJoinRoomEvents(int *quit, char *username, char *room_name, int client
 void renderJoinRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *room_name);
 void handleJoinRandomRoomEvents(int client_fd, char *username);
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players);
-void handleWaitingRoomEvents(int *quit, int *startGame);
+void handleWaitingRoomEvents(int *quit, int clien_fd, const char *username);
 
 #endif // TETRIS_GAME_H
