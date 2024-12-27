@@ -19,12 +19,15 @@ int client_fd;
 
 char username[MAX_USERNAME] = "";
 char password[MAX_PASSWORD] = "";
+char confirmPassword[MAX_PASSWORD] = "";
 char room_name[255] = "";
 int time_limit = 0;
 int brick_limit = 0;
 int max_player = 8;
 int usernameSelected = 1;
 int loginSuccess = 0;
+int showRegisterScreen = 0;
+int registerSuccess = 0;
 int createRoomSuccess = 0;
 int joinRoomSuccess = 0;
 int selectedField = 0;
@@ -227,6 +230,8 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
     int startTime = lastTime;
     int brickPlaced = 0;
 
+    printf("Starting Tetris game with time limit: %d seconds and brick limit: %d bricks\n", time_limit, brick_limit);
+
     while (GameOn && !quit) {
         int currentTime = SDL_GetTicks();
         //Check time limit
@@ -242,8 +247,10 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
         }
 
         if (currentTime - lastTime > timer) {
-            moveShapeDown();
-            brickPlaced++;
+            if (moveShapeDown()) {
+                brickPlaced++;
+                printf("Brick placed: %d, Current time: %d, Last time: %d\n", brickPlaced, currentTime, lastTime);
+            }
             lastTime = currentTime;
         }
         handleEvents(&quit);
@@ -328,10 +335,25 @@ int main() {
     }
     printf("Font loaded.\n");
 
+    // Auth section
     while (!quit && !loginSuccess) {
-        handleLoginEvents(&quit, &loginSuccess, username, password, &usernameSelected, client_fd);
-        renderLoginScreen(renderer, font, username, password, usernameSelected);
+        if (showRegisterScreen) {
+            handleRegisterEvents(&quit, &registerSuccess, username, password, confirmPassword, &selectedField, client_fd);
+            renderRegisterScreen(renderer, font, username, password, confirmPassword, selectedField);
+            if (registerSuccess) {
+                showRegisterScreen = 0;
+                registerSuccess = 0;
+                memset(username, 0, sizeof(username));
+                memset(password, 0, sizeof(password));
+                memset(confirmPassword, 0, sizeof(confirmPassword));
+            }
+        } else {
+            handleLoginEvents(&quit, &loginSuccess, &showRegisterScreen, username, password, &usernameSelected, client_fd);
+            renderLoginScreen(renderer, font, username, password, usernameSelected);
+        }
     }
+
+    // In game section
 
     pthread_t tid;
     if (pthread_create(&tid, NULL, serverMessageThread, &client_fd) != 0) {
@@ -339,6 +361,7 @@ int main() {
         close(client_fd);
         exit(EXIT_FAILURE);
     }
+
 
     if (loginSuccess) {
         currentScreen = MENU_SCREEN;

@@ -192,14 +192,16 @@ void clearLines() {
     updatePlayerScore(score);
 }
 
-void moveShapeDown() {
+int moveShapeDown() {
     current.row++;
     if (!checkPosition(current)) {
         current.row--;
         mergeShape();
         clearLines();
         newRandomShape2();
+        return 1;
     }
+    return 0;
 }
 
 void rotateShape() {
@@ -683,28 +685,6 @@ void renderRegisterScreen(SDL_Renderer *renderer, TTF_Font *font, const char *us
     SDL_RenderCopy(renderer, texture, NULL, &rect);
     SDL_DestroyTexture(texture);
 
-    // Render register button
-    surface = TTF_RenderText_Solid(font, "Register", white);
-    if (!surface) {
-        printf("TTF_RenderText_Solid Error: %s\n", TTF_GetError());
-        return;
-    }
-    texture = SDL_CreateTextureFromSurface(renderer, surface);
-    if (!texture) {
-        printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
-        SDL_FreeSurface(surface);
-        return;
-    }
-    SDL_Rect registerRect = {SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 110, 200, 30};
-    SDL_RenderDrawRect(renderer, &registerRect);
-    rect.x = registerRect.x + 5;
-    rect.y = registerRect.y + 5;
-    rect.w = surface->w;
-    rect.h = surface->h;
-    SDL_FreeSurface(surface);
-    SDL_RenderCopy(renderer, texture, NULL, &rect);
-    SDL_DestroyTexture(texture);
-
     SDL_RenderPresent(renderer);
 }
 
@@ -771,17 +751,20 @@ void handleRegisterEvents(int *quit, int *registerSuccess, char *username, char 
                 }
                 if (*selectedField == 0 && strlen(username) < MAX_USERNAME - 1) {
                     strncat(username, &keyChar, 1);
+                    printf("Username: %s\n", username);
                 } else if (*selectedField == 1 && strlen(password) < MAX_PASSWORD - 1) {
                     strncat(password, &keyChar, 1);
+                    printf("Password: %s\n", password);
                 } else if (*selectedField == 2 && strlen(confirmPassword) < MAX_PASSWORD - 1) {
                     strncat(confirmPassword, &keyChar, 1);
+                    printf("Confirm Password: %s\n", confirmPassword);
                 }
             }
         }
     }
 }
 
-void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *password, int *usernameSelected, int client_fd) {
+void handleLoginEvents(int *quit, int *loginSuccess, int *showRegisterScreen, char *username, char *password, int *usernameSelected, int client_fd) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
@@ -793,6 +776,10 @@ void handleLoginEvents(int *quit, int *loginSuccess, char *username, char *passw
                     if (x >= registerRect.x && x <= (registerRect.x + registerRect.w) &&
                         y >= registerRect.y && y <= (registerRect.y + registerRect.h)) {
                         printf("Register button clicked!\n");
+                        *showRegisterScreen = 1;
+                        username[0] = '\0';
+                        password[0] = '\0';
+                        return;
                     }
         } else if (e.type == SDL_KEYDOWN) {
             SDL_Keycode key = e.key.keysym.sym;

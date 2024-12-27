@@ -376,7 +376,8 @@ Message handle_register(Message *msg, PGconn *conn)
 
     // Hash the password (a placeholder hashing mechanism)
     char password_hash[BUFFER_SIZE + 10];
-    snprintf(password_hash, sizeof(password_hash), "hashed_%s", msg->data);
+    // pls don't add the "hashed_" before the password :)
+    snprintf(password_hash, sizeof(password_hash), "%s", msg->data);
 
     // Try to register the user in the database
     if (insert_user(conn, msg->username, password_hash))
