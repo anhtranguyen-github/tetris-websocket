@@ -15,5 +15,6 @@ int join_room(int client_fd, const char *username, const char *room_name, const 
 int join_random_room(int client_fd, const char *username, const char *session_id);
 int start_game(int client_fd, const char *userName);
 int register_user(int client_fd, const char *username, const char *password);
+int update_score(int client_fd, const char *username, const char *session_id, int score);
 
 #endif

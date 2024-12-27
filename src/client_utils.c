@@ -97,3 +97,16 @@ int register_user(int client_fd, const char* username, const char* password) {
         return 0;
     }
 }
+
+int update_score(int client_fd, const char *username, const char *session_id, int score) {
+    Message msg = {UPDATE_SCORE, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+    snprintf(msg.data, sizeof(msg.data), "%s|%d", session_id, score);
+
+    if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
+        perror("Failed to send start game request");
+        return 1;
+    }
+
+    return 0;
+}
