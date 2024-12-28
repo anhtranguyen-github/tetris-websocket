@@ -68,6 +68,10 @@ Shape viewNextShape(const ShapeList *shapeList) {
     // Calculate the index of the next shape
     int nextIndex = (shapeList->current + 1) % shapeList->count;
 
+     if (shapeList->shapes[nextIndex].array == NULL) {
+        fprintf(stderr, "Shape array at index %d is NULL!\n", nextIndex);
+    }
+
     // Return the next shape
     return shapeList->shapes[nextIndex];
 }
@@ -163,9 +167,10 @@ void mergeShape() {
             }
         }
     }
+    printf("Merged shape at (%d,%d)\n",current.row, current.col);
 }
 
-void clearLines() {
+void clearLines(int client_fd, const char *username, const char *session_id) {
     int cleared = 0;
     for (int i = ROWS - 1; i >= 0; i--) {
         int full = 1;
@@ -189,15 +194,16 @@ void clearLines() {
         }
     }
     score += cleared * 100;
-    updatePlayerScore(score);
+    leaderboard[0].score = score;
+    update_score(client_fd, username, session_id, score);
 }
 
-int moveShapeDown() {
+int moveShapeDown(int client_fd, const char *username) {
     current.row++;
     if (!checkPosition(current)) {
         current.row--;
         mergeShape();
-        clearLines();
+        clearLines(client_fd, username, session_id);
         newRandomShape2();
         return 1;
     }
@@ -257,7 +263,7 @@ int handleButtonClick(Button button, int x, int y) {
     return (x >= button.rect.x && x <= button.rect.x + button.rect.w && y >= button.rect.y && y <= button.rect.y + button.rect.h);
 }
 
-void handleEvents(int *quit) {
+void handleEvents(int *quit, int client_fd, const char *username) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
@@ -266,7 +272,7 @@ void handleEvents(int *quit) {
             switch (e.key.keysym.sym) {
                 case SDLK_LEFT: current.col--; if (!checkPosition(current)) current.col++; break;
                 case SDLK_RIGHT: current.col++; if (!checkPosition(current)) current.col--; break;
-                case SDLK_DOWN: moveShapeDown(); break;
+                case SDLK_DOWN: moveShapeDown(client_fd, username); break;
                 case SDLK_UP: rotateShape(); break;
             }
         }
@@ -280,32 +286,34 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomP
     SDL_Rect rect;
     char buffer[50];
 
+    // Initialize leaderboard names
     for (int i = 0; i < LEADERBOARD_SIZE; i++) {
         strncpy(leaderboard[i].name, "", sizeof(leaderboard[i].name));
     }
 
+    // Copy and tokenize roomPlayers
     char playersCopy[ROOM_PLAYER_BUFFER_SIZE];
     strncpy(playersCopy, roomPlayers, sizeof(playersCopy));
-    playersCopy[sizeof(playersCopy) - 1] = '\0';  // Ensure null-terminated string
+    playersCopy[sizeof(playersCopy) - 1] = '\0';
     char *token = strtok(playersCopy, ",");
     int index = 0;
 
+    // Populate leaderboard entries
     while (token != NULL && index < LEADERBOARD_SIZE) {
         strncpy(leaderboard[index].name, token, sizeof(leaderboard[index].name));
-        leaderboard[index].name[sizeof(leaderboard[index].name) - 1] = '\0';  // Ensure null-termination
+        leaderboard[index].name[sizeof(leaderboard[index].name) - 1] = '\0';
         token = strtok(NULL, ",");
         index++;
     }
 
-    // Render each leaderboard entry
+    // Render leaderboard entries
     for (int i = 0; i < index; i++) {
         snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
         surface = TTF_RenderText_Solid(font, buffer, white);
         texture = SDL_CreateTextureFromSurface(renderer, surface);
-        
-        // Position leaderboard entries to the right of the game screen
-        rect.x = SCREEN_WIDTH - 300;  // Assuming SCREEN_WIDTH is the width of the game area
-        rect.y = 10 + i * 30;        // Adjust spacing between entries
+
+        rect.x = SCREEN_WIDTH - 300;
+        rect.y = 10 + i * 30;
         rect.w = surface->w;
         rect.h = surface->h;
 
@@ -314,19 +322,27 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomP
         SDL_DestroyTexture(texture);
     }
 
-    // Render the next shape in the leaderboard area
+    // Render the next shape
     Shape nextShape = viewNextShape(&shapeList);
+    int shapeStartX = SCREEN_WIDTH - 250;
+    int shapeStartY = 450;
 
     if (nextShape.array == NULL) {
         printf("Warning: nextShape.array is NULL.\n");
+        // Render the next shape area as black
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_Rect nextShapeRect = {shapeStartX, shapeStartY, 4 * BLOCK_SIZE, 4 * BLOCK_SIZE};
+        SDL_RenderFillRect(renderer, &nextShapeRect);
         return;
     }
 
-    SDL_Color shapeColor = {255, 255, 0}; // Yellow color for the next shape
-    int shapeStartX = SCREEN_WIDTH - 250; // Position to render next shape
-    int shapeStartY = 450;
+    SDL_Color shapeColor = {255, 255, 0};
 
     for (int i = 0; i < nextShape.width; i++) {
+        if (nextShape.array[i] == NULL) {
+            printf("Warning: nextShape.array[%d] is NULL.\n", i);
+            continue;
+        }
         for (int j = 0; j < nextShape.width; j++) {
             if (nextShape.array[i][j]) {
                 int x = shapeStartX + j * BLOCK_SIZE;
@@ -378,11 +394,6 @@ void renderGame(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers)
 
     // Present the rendered frame
     SDL_RenderPresent(renderer);
-}
-
-// TODO: Update the score to other player
-void updatePlayerScore(int newScore) {
-    leaderboard[0].score = newScore;
 }
 
 //Declare Register button Globally

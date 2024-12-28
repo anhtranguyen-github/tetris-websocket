@@ -219,7 +219,7 @@ void* serverMessageThread(void* arg) {
     return NULL;
 }
 
-void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers) {
+void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers, int client_fd) {
     //initShapeList();
     //generateShapes(brick_limit);
     convertIntToShapeList(shapeListInt);
@@ -247,33 +247,16 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
         }
 
         if (currentTime - lastTime > timer) {
-            if (moveShapeDown()) {
+            if (moveShapeDown(client_fd, username)) {
                 brickPlaced++;
                 printf("Brick placed: %d, Current time: %d, Last time: %d\n", brickPlaced, currentTime, lastTime);
             }
             lastTime = currentTime;
         }
-        handleEvents(&quit);
+        handleEvents(&quit, client_fd, username);
         renderGame(renderer, font, roomPlayers);
     }
 
-    // Cleanup
-    if (renderer) {
-        SDL_DestroyRenderer(renderer);
-        printf("Rendere destroyed.\n");
-    }
-    if (window) {
-        SDL_DestroyWindow(window);
-        printf("Window destroyed.\n");
-
-    }
-    if (font) {
-        TTF_CloseFont(font);
-        printf("Font closed.\n");
-
-    }
-    TTF_Quit();
-    SDL_Quit();
     freeShape(current);
     printf("Shape freed.\n");
 
@@ -438,9 +421,26 @@ int main() {
                     currentScreen = GAME_SCREEN;
                 }
             } else if (currentScreen == GAME_SCREEN) {
-                startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers);
+                startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers, client_fd);
             }
         }
+        // Cleanup
+        if (renderer) {
+            SDL_DestroyRenderer(renderer);
+            printf("Renderer destroyed.\n");
+        }
+        if (window) {
+            SDL_DestroyWindow(window);
+            printf("Window destroyed.\n");
+
+        }
+        if (font) {
+            TTF_CloseFont(font);
+            printf("Font closed.\n");
+
+        }
+        TTF_Quit();
+        SDL_Quit();
     }
     return 0;
 }
