@@ -75,30 +75,65 @@ void write_to_log_OnlineUser()
     write_to_log(log_message);
 }
 
-void add_online_user(int user_id, const char *username, const char *session_id, int socket_fd, struct sockaddr_in client_addr)
+void add_online_user(int user_id, const char *username, const char *session_id, int socket_fd, struct sockaddr_in client_addr) 
 {
+    // Check for an existing user with the same username
+    for (int i = 0; i < MAX_USERS; i++) 
+    {
+        if (strcmp(online_users[i].username, username) == 0) 
+        {
+            // Replace the existing user with the new one
+            OnlineUser *user = &online_users[i];
+            user->user_id = user_id;
+            strncpy(user->username, username, sizeof(user->username) - 1);
+            user->username[sizeof(user->username) - 1] = '\0'; // Ensure null termination
+            strncpy(user->session_id, session_id, sizeof(user->session_id) - 1);
+            user->session_id[sizeof(user->session_id) - 1] = '\0'; // Ensure null termination
+            user->socket_fd = socket_fd;
+            user->client_addr = client_addr;
+            user->last_activity = time(NULL); // Set current time as last activity
+            user->is_authenticated = 1;       // User is authenticated
+            
+            // Reset the room_id for the new session
+            user->room_id = -1;
+
+            char log_message[256];
+            snprintf(log_message, sizeof(log_message),
+                     "Duplicate username found. Replacing old user: [ID: %d, Username: %s, SessionID: %s, IP: %s, SocketFD: %d, RoomID: %d]",
+                     user->user_id, user->username, user->session_id, inet_ntoa(client_addr.sin_addr), socket_fd, user->room_id);
+            write_to_log(log_message);
+            return;
+        }
+    }
+
+    // Find an empty slot for the new user
     int index = find_empty_slot();
-    if (index == -1)
+    if (index == -1) 
     {
         write_to_log("No empty slots for online users.");
         return;
     }
 
+    // Add the new user
     OnlineUser *user = &online_users[index];
     user->user_id = user_id;
     strncpy(user->username, username, sizeof(user->username) - 1);
+    user->username[sizeof(user->username) - 1] = '\0'; // Ensure null termination
     strncpy(user->session_id, session_id, sizeof(user->session_id) - 1);
+    user->session_id[sizeof(user->session_id) - 1] = '\0'; // Ensure null termination
     user->socket_fd = socket_fd;
     user->client_addr = client_addr;
     user->last_activity = time(NULL); // Set current time as last activity
     user->is_authenticated = 1;       // User is authenticated
+    user->room_id = -1;               // Initialize room_id to -1 for a new user
 
     char log_message[256];
     snprintf(log_message, sizeof(log_message),
-             "User added to online users: [ID: %d, Username: %s, SessionID: %s, IP: %s, SocketFD: %d]",
-             user->user_id, user->username, user->session_id, inet_ntoa(client_addr.sin_addr), socket_fd);
+             "User added to online users: [ID: %d, Username: %s, SessionID: %s, IP: %s, SocketFD: %d, RoomID: %d]",
+             user->user_id, user->username, user->session_id, inet_ntoa(client_addr.sin_addr), socket_fd, user->room_id);
     write_to_log(log_message);
 }
+
 
 void generateSessionID(char *sessionID);
 // Signal handler to clean up and close the server socket
