@@ -111,6 +111,18 @@ int update_score(int client_fd, const char *username, const char *session_id, in
     return 0;
 }
 
+int end_game(int client_fd, const char *username, const char *session_id) {
+    Message msg = {END_GAME, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+    
+    if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
+        perror("Failed to send end game request");
+        return 1;
+    }
+
+    return 0;
+}
+
 int disconnect(int client_fd, const char *username) {
     Message msg = {DISCONNECT, "", "", ""};
     strncpy(msg.username, username, MAX_USERNAME);
