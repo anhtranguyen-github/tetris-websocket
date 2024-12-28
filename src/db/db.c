@@ -353,10 +353,10 @@ int main() {
     fetch_users(conn);
 
     // Create multiple rooms
-    create_room(conn, "Room1", 1, 60, 150, 4);
-    create_room(conn, "Room2", 2, 45, 100, 6);
-    create_room(conn, "Room3", 3, 30, 200, 5);
-    create_room(conn, "Room4", 4, 90, 300, 3);
+    //create_room(conn, "Room1", 1, 60, 150, 4);
+    //create_room(conn, "Room2", 2, 45, 100, 6);
+    //create_room(conn, "Room3", 3, 30, 200, 5);
+   // create_room(conn, "Room4", 4, 90, 300, 3);
 
     // Create a game and update its status
     create_game(conn, 1);
