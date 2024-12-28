@@ -333,6 +333,7 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomP
     int shapeStartY = 450;
 
     if (nextShape.array == NULL) {
+        //Still got a segmentation fault at this part lmao
         printf("Warning: nextShape.array is NULL.\n");
         // Render the next shape area as black
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -1394,5 +1395,7 @@ void handleWaitingRoomEvents(int *quit, int client_fd, const char *username) {
     }
 }
 
-
+void handleDisconnect(int client_fd, const char *username) {
+    disconnect(client_fd, username);
+}
 

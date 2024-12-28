@@ -110,3 +110,16 @@ int update_score(int client_fd, const char *username, const char *session_id, in
 
     return 0;
 }
+
+int disconnect(int client_fd, const char *username) {
+    Message msg = {DISCONNECT, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+
+    if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
+        perror("Failed to send disconnect request\n");
+        return 1;
+    }
+
+    printf("Successfully send msg to server\n");
+    return 0;
+} 

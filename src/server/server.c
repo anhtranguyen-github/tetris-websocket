@@ -1004,6 +1004,7 @@ void handleClientRequest(int clientSocket, PGconn *conn)
 
         case DISCONNECT:
             strcpy(response.data, "Disconnected from server.");
+            write_to_log("User disconnected");
             response.type = DISCONNECT;
             break;
 

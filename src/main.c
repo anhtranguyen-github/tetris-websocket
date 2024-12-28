@@ -4,12 +4,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
 #include "tetris_game.h"
 #include "protocol/network.h"
 #include "protocol/protocol.h"
 #include "ultis.h"
 #include <pthread.h>
-#include <unistd.h> // Add this line
+#include <unistd.h> 
 
 #define SCREEN_WIDTH  800  // or whatever value you need
 #define SCREEN_HEIGHT 600  // or whatever value you need
@@ -62,12 +63,15 @@ ScreenState currentScreen;
 
 
 
-
-
-
-
-
-
+// On clicking Ctr + C in terminal
+void handle_signal(int sig) {
+    printf("\nReceived signal %d, shutting down...\n", sig);
+    handleDisconnect(client_fd, username);
+    if (client_fd > 0) {
+        close(client_fd);
+    }
+    exit(0);
+}
 
 
 void get_shape_list_int(int* shapeList, const Message* message) {
@@ -269,7 +273,10 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
 
 
 int main() {
-    int client_fd = create_client_socket(server_ip);
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+
+    client_fd = create_client_socket(server_ip);
     if (client_fd < 0) {
         fprintf(stderr, "Client: Failed to connect to server\n");
         exit(EXIT_FAILURE);
@@ -441,6 +448,7 @@ int main() {
             printf("Font closed.\n");
 
         }
+        handleDisconnect(client_fd, username);
         TTF_Quit();
         SDL_Quit();
     }
