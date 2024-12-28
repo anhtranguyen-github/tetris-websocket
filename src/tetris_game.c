@@ -263,7 +263,7 @@ int handleButtonClick(Button button, int x, int y) {
     return (x >= button.rect.x && x <= button.rect.x + button.rect.w && y >= button.rect.y && y <= button.rect.y + button.rect.h);
 }
 
-void handleEvents(int *quit, int client_fd, const char *username) {
+void handleEvents(int *quit, int client_fd, const char *username, int *shapeMovedDown) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
@@ -272,7 +272,12 @@ void handleEvents(int *quit, int client_fd, const char *username) {
             switch (e.key.keysym.sym) {
                 case SDLK_LEFT: current.col--; if (!checkPosition(current)) current.col++; break;
                 case SDLK_RIGHT: current.col++; if (!checkPosition(current)) current.col--; break;
-                case SDLK_DOWN: moveShapeDown(client_fd, username); break;
+                case SDLK_DOWN: 
+                    if (!*shapeMovedDown) {
+                        moveShapeDown(client_fd, username); 
+                        *shapeMovedDown = 1;
+                    }
+                    break;
                 case SDLK_UP: rotateShape(); break;
             }
         }

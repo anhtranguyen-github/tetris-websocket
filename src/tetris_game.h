@@ -61,7 +61,7 @@ void mergeShape();
 void clearLines(int client_fd, const char *username, const char *session_id);
 int moveShapeDown(int client_fd, const char *username);
 void rotateShape();
-void handleEvents(int *quit, int client_fd, const char *username);
+void handleEvents(int *quit, int client_fd, const char *username, int *shapeMovedDown);
 void renderLeadeerboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers);
 void renderGame(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers);
 void renderButton(SDL_Renderer *renderer, TTF_Font *font, Button button);

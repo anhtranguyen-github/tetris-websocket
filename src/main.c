@@ -34,7 +34,6 @@ int selectedField = 0;
 int startGame = 0;
 
 
-
 void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -229,6 +228,7 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
     int lastTime = SDL_GetTicks();
     int startTime = lastTime;
     int brickPlaced = 0;
+    int shapeMovedDown = 0;
 
     printf("Starting Tetris game with time limit: %d seconds and brick limit: %d bricks\n", time_limit, brick_limit);
 
@@ -246,14 +246,16 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
             break;
         }
 
+        shapeMovedDown = 0;
         if (currentTime - lastTime > timer) {
             if (moveShapeDown(client_fd, username)) {
                 brickPlaced++;
                 printf("Brick placed: %d, Current time: %d, Last time: %d\n", brickPlaced, currentTime, lastTime);
             }
             lastTime = currentTime;
+            shapeMovedDown = 1;
         }
-        handleEvents(&quit, client_fd, username);
+        handleEvents(&quit, client_fd, username, &shapeMovedDown);
         renderGame(renderer, font, roomPlayers);
     }
 
