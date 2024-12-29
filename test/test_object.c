@@ -21,7 +21,12 @@ int main() {
     int room_id = 1;
     printf("Creating online game for room ID: %d\n", room_id);
 
-    create_online_game(conn, room_id); // Function under test
+create_online_game(conn, room_id);
+printf("Debug: Attempting to create online game with room ID: %d\n", room_id);
+for (int i = 0; i < MAX_GAME; i++) {
+    printf("Slot %d: Room ID = %d\n", i, online_game[i].room_id);
+}
+
 
     printf("Created online game.\n");
 

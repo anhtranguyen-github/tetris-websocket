@@ -469,7 +469,7 @@ int main() {
                 }
                 else handleEndGame(&quit, renderer, font, buttons, 3);
             } else if (currentScreen == WAITING_ROOM_SCREEN) {
-                write_to_log("Into the wait room...");
+                //write_to_log("Into the wait room...");
                 handleWaitingRoomEvents(&quit, client_fd, username);
                 renderWaitingRoom(renderer, font, currentRoomName, currentTimeLimit, currentBrickLimit, currentMaxPlayers, currentRoomPlayers);
                
