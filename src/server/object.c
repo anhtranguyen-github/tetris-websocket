@@ -120,6 +120,51 @@ RoomInfo *get_room_info(PGconn *conn, int room_id) {
     return room_info; // Return the populated struct
 }
 
+
+RoomInfo **get_all_room_info(PGconn *conn, int *count) {
+    const char *query = "SELECT room_id FROM rooms;";
+    PGresult *res = PQexec(conn, query);
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "Error retrieving room IDs: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        return NULL;
+    }
+
+    // Get the number of rows
+    int num_rooms = PQntuples(res);
+    *count = num_rooms;
+
+    // Allocate memory for the array of RoomInfo pointers
+    RoomInfo **rooms = malloc(num_rooms * sizeof(RoomInfo *));
+    if (!rooms) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        PQclear(res);
+        return NULL;
+    }
+
+    // Fetch room information for each room_id
+    for (int i = 0; i < num_rooms; i++) {
+        int room_id = atoi(PQgetvalue(res, i, 0));
+        rooms[i] = get_room_info(conn, room_id);
+        if (!rooms[i]) {
+            fprintf(stderr, "Failed to fetch room info for room_id %d\n", room_id);
+            // Free already allocated memory
+            for (int j = 0; j < i; j++) {
+                free(rooms[j]);
+            }
+            free(rooms);
+            PQclear(res);
+            return NULL;
+        }
+    }
+
+    PQclear(res);
+    return rooms;
+}
+
+
+
 // Function to get the brick limit from a RoomInfo struct (no need for DB connection)
 int get_brick_limit(RoomInfo *room_info) {
     if (room_info == NULL) {
