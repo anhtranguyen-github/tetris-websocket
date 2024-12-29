@@ -191,6 +191,17 @@ void handleServerMessages(int client_fd) {
 
             case PLAYER_JOINED:
                 printf("Another player joined: %s\n", response.data);
+                // Extract the player's name from the message
+                char playerName[MAX_USERNAME];
+                if (sscanf(response.data, "Player '%31[^']' has joined the room.", playerName) == 1) {
+                    // Update the room_players string
+                    if (strlen(currentRoomPlayers) + strlen(playerName) + 1 < sizeof(currentRoomPlayers)) {
+                        if (strlen(currentRoomPlayers) > 0) {
+                            strncat(currentRoomPlayers, ",", sizeof(currentRoomPlayers) - strlen(currentRoomPlayers) - 1);
+                        }
+                        strncat(currentRoomPlayers, response.data, sizeof(currentRoomPlayers) - strlen(currentRoomPlayers) - 1);
+                    }
+                }
                 break;               
 
             case GAME_ALREADY_STARTED:
@@ -284,7 +295,7 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
 
     // Print final score
     printf("Game Over! Final Score: %d\n", score);
-    printf("Press Enter to return to Main Menu");
+    printf("Press Enter to return to Main Menu\n");
 
     // Reset the startGame flag
     startGame = 0;
@@ -412,6 +423,7 @@ int main() {
                                     currentMaxPlayers = max_player;
                                     snprintf(currentRoomPlayers, sizeof(currentRoomPlayers), "%s", username); // Add creator as the first player
                                     createRoomSuccess = 0;
+                                    joinRoomAfterCreate(client_fd, username, room_name);
                                     // Transition to the waiting room screen
                                     currentScreen = WAITING_ROOM_SCREEN;
                                 }
@@ -440,16 +452,7 @@ int main() {
                 write_to_log("Into the wait room...");
                 handleWaitingRoomEvents(&quit, client_fd, username);
                 renderWaitingRoom(renderer, font, currentRoomName, currentTimeLimit, currentBrickLimit, currentMaxPlayers, currentRoomPlayers);
-                // waiting room, then someone (or the host) press Enter
-                    // Right now everyone gets the: "Press Enter to start Game" text
-                    // If the server returns a message contains the host id, 
-                    // compare user_id == host_id, only the host will get the text, and a handle Enter event
-                // After press Enter, the, sends starts game to the server using START_GAME(?)
-                // Server create game in the DB?
-                // Server broadcast to all players in the room
-                // Client recieved the message START_GAME_SUCCESS(?)
-                // After recieving the message, int startGame = 1 then the following line starts:
-                
+               
                 if (startGame) {
                     currentScreen = GAME_SCREEN;
                 }

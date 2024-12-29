@@ -1233,6 +1233,10 @@ void handleJoinRoomEvents(int *quit, char *username, char *room_name, int client
     }
 }
 
+void joinRoomAfterCreate(int client_fd, char *username, char *room_name) {
+    join_room(client_fd, username, room_name, session_id);
+}
+
 void renderJoinRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *room_name) {
     SDL_Color white = {255, 255, 255};
     SDL_Color black = {0, 0, 0};
