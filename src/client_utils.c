@@ -5,6 +5,8 @@
 #include "protocol/network.h"
 #include "protocol/protocol.h"
 #include "../config/client_config.h"
+#include "ultis.h"
+
 
 int send_login_request(int client_fd, const char *username, const char *password, char *session_id) {
     Message msg = {LOGIN, "", "", ""};
@@ -102,13 +104,13 @@ int update_score(int client_fd, const char *username, const char *session_id, in
     Message msg = {UPDATE_SCORE, "", "", ""};
     strncpy(msg.username, username, MAX_USERNAME);
     snprintf(msg.data, sizeof(msg.data), "%s|%d", session_id, score);
-
+    write_to_log(msg.data);
     if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
         perror("Failed to send update score request");
         return 1;
     }
 
-    printf("Sent update score to server\n");
+    write_to_log("Sent update score to server\n");
     return 0;
 }
 

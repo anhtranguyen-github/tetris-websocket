@@ -1445,7 +1445,7 @@ void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_
 
 void handleWaitingRoomEvents(int *quit, int client_fd, const char *username) {
     SDL_Event e;
-    write_to_log("Enter handle Wait Room...");
+    //write_to_log("Enter handle Wait Room...");
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
             *quit = 1;
