@@ -37,7 +37,7 @@ void write_to_log_OnlineUser()
     char user_entry[512];   // Buffer for each user's details
     strcpy(log_message, "Online Users Log:\n");
     strcat(log_message, "---------------------------------------------------------------------------------------------------------------\n");
-    strcat(log_message, "| ID   | Username            | Session ID       | SocketFD  | IP Address    | Port  | Last Activity        | Authenticated |\n");
+    strcat(log_message, "| ID   | Username            | Session ID       | SocketFD  | IP Address    | Port  | Last Activity        | Authenticated | Room ID | Hosting     |\n");
     strcat(log_message, "---------------------------------------------------------------------------------------------------------------\n");
 
     for (int i = 0; i < MAX_USERS; i++)
@@ -56,7 +56,7 @@ void write_to_log_OnlineUser()
 
             // Format the user entry
             snprintf(user_entry, sizeof(user_entry),
-                     "| %-4d | %-20s | %-15s | %-10d | %-15s | %-5d | %-20s | %-13s |\n",
+                     "| %-4d | %-20s | %-15s | %-10d | %-15s | %-5d | %-20s | %-13s | %-7d | %-12s |\n",
                      online_users[i].user_id,
                      online_users[i].username,
                      online_users[i].session_id,
@@ -64,7 +64,10 @@ void write_to_log_OnlineUser()
                      ip_address,
                      port,
                      time_buffer,
-                     online_users[i].is_authenticated ? "YES" : "NO");
+                     online_users[i].is_authenticated ? "YES" : "NO",
+                     online_users[i].room_id,
+                     online_users[i].is_hosting ? "YES" : "NO");
+
             strcat(log_message, user_entry);
         }
     }
@@ -74,6 +77,7 @@ void write_to_log_OnlineUser()
     // Write the final log message to the log file
     write_to_log(log_message);
 }
+
 
 void add_online_user(int user_id, const char *username, const char *session_id, int socket_fd, struct sockaddr_in client_addr) 
 {
@@ -568,7 +572,7 @@ void broadcast_message_to_room(int room_id, Message *message)
         {
             snprintf(log_buffer, BUFFER_SIZE, "Sending message to user: %s (socket_fd: %d)", user->username, user->socket_fd);
             write_to_log(log_buffer);
-
+            write_to_log(message->data);
             ssize_t bytes_sent = send(user->socket_fd, message, sizeof(Message), 0);
 
             if (bytes_sent < 0)
