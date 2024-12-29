@@ -33,7 +33,7 @@ int createRoomSuccess = 0;
 int joinRoomSuccess = 0;
 int selectedField = 0;
 int startGame = 0;
-
+int endGame = 0;
 
 void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -191,6 +191,17 @@ void handleServerMessages(int client_fd) {
 
             case PLAYER_JOINED:
                 printf("Another player joined: %s\n", response.data);
+                // Extract the player's name from the message
+                char playerName[MAX_USERNAME];
+                if (sscanf(response.data, "Player '%31[^']' has joined the room.", playerName) == 1) {
+                    // Update the room_players string
+                    if (strlen(currentRoomPlayers) + strlen(playerName) + 1 < sizeof(currentRoomPlayers)) {
+                        if (strlen(currentRoomPlayers) > 0) {
+                            strncat(currentRoomPlayers, ",", sizeof(currentRoomPlayers) - strlen(currentRoomPlayers) - 1);
+                        }
+                        strncat(currentRoomPlayers, playerName, sizeof(currentRoomPlayers) - strlen(currentRoomPlayers) - 1);
+                    }
+                }
                 break;               
 
             case GAME_ALREADY_STARTED:
@@ -216,6 +227,20 @@ void handleServerMessages(int client_fd) {
     }
 }
 
+void handleEndGame(int *quit, SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
+            // On pressing Enter, return to the menu screen
+            renderMenu(renderer, font, buttons, 3);
+            endGame = 0;
+            joinRoomSuccess = 0;
+        }
+    }
+}
+
 void* serverMessageThread(void* arg) {
     int client_fd = *((int*)arg);
     handleServerMessages(client_fd);
@@ -234,19 +259,33 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
     int brickPlaced = 0;
     int shapeMovedDown = 0;
 
+    
+    // Reset the Table array
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            Table[i][j] = 0;
+        }
+    }
+    // Reset the score
+    score = 0;
+
     printf("Starting Tetris game with time limit: %d seconds and brick limit: %d bricks\n", time_limit, brick_limit);
+
+    initLeaderboard();
 
     while (GameOn && !quit) {
         int currentTime = SDL_GetTicks();
         //Check time limit
         if ((currentTime - startTime) / 1000 >= time_limit) {
             printf("Time limit reached!\n");
+            GameOn = 0;
             break;
         }
 
         // Check block limit
         if (brickPlaced >= brick_limit) {
             printf("Brick limit reached!\n");
+            GameOn = 0;
             break;
         }
 
@@ -269,6 +308,19 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
 
     // Print final score
     printf("Game Over! Final Score: %d\n", score);
+    printf("Press Enter to return to Main Menu\n");
+
+     // Reset room variables
+    memset(currentRoomName, 0, sizeof(currentRoomName));
+    currentTimeLimit = 0;
+    currentBrickLimit = 0;
+    memset(currentRoomPlayers, 0, sizeof(currentRoomPlayers));
+
+
+    // Reset the startGame flag
+    startGame = 0;
+    endGame = 1;
+    currentScreen = MENU_SCREEN;
 }
 
 
@@ -391,6 +443,7 @@ int main() {
                                     currentMaxPlayers = max_player;
                                     snprintf(currentRoomPlayers, sizeof(currentRoomPlayers), "%s", username); // Add creator as the first player
                                     createRoomSuccess = 0;
+                                    joinRoomAfterCreate(client_fd, username, room_name);
                                     // Transition to the waiting room screen
                                     currentScreen = WAITING_ROOM_SCREEN;
                                 }
@@ -411,26 +464,23 @@ int main() {
                 } 
             }
             if (currentScreen == MENU_SCREEN) {
-                renderMenu(renderer, font, buttons, 3);
+                if (!endGame){
+                    renderMenu(renderer, font, buttons, 3);
+                }
+                else handleEndGame(&quit, renderer, font, buttons, 3);
             } else if (currentScreen == WAITING_ROOM_SCREEN) {
                 write_to_log("Into the wait room...");
                 handleWaitingRoomEvents(&quit, client_fd, username);
                 renderWaitingRoom(renderer, font, currentRoomName, currentTimeLimit, currentBrickLimit, currentMaxPlayers, currentRoomPlayers);
-                // waiting room, then someone (or the host) press Enter
-                    // Right now everyone gets the: "Press Enter to start Game" text
-                    // If the server returns a message contains the host id, 
-                    // compare user_id == host_id, only the host will get the text, and a handle Enter event
-                // After press Enter, the, sends starts game to the server using START_GAME(?)
-                // Server create game in the DB?
-                // Server broadcast to all players in the room
-                // Client recieved the message START_GAME_SUCCESS(?)
-                // After recieving the message, int startGame = 1 then the following line starts:
-                
+               
                 if (startGame) {
                     currentScreen = GAME_SCREEN;
                 }
-            } else if (currentScreen == GAME_SCREEN) {
+            } else if (currentScreen == GAME_SCREEN && startGame) {
+                GameOn = 1;
                 startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers, client_fd);
+            } else if (currentScreen == GAME_SCREEN && !startGame) {
+                printf("Waiting for the server to start the game...");
             }
         }
         // Cleanup
