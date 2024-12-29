@@ -68,8 +68,10 @@ Shape viewNextShape(const ShapeList *shapeList) {
     // Calculate the index of the next shape
     int nextIndex = (shapeList->current + 1) % shapeList->count;
 
-     if (shapeList->shapes[nextIndex].array == NULL) {
+    if (shapeList->shapes[nextIndex].array == NULL) {
         fprintf(stderr, "Shape array at index %d is NULL!\n", nextIndex);
+        Shape emptyShape = {NULL, 0, 0, 0};
+        return emptyShape;
     }
 
     // Return the next shape
@@ -152,7 +154,8 @@ void newRandomShape() {
 }
 
 void newRandomShape2() {
-    freeShape(current);
+    // Reason why it's because the loop of the view next shape will not make the shape go NULL lmao
+    //freeShape(current);
     current = getNextShape2();
     if (!checkPosition(current)) {
         GameOn = 0;

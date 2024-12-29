@@ -250,6 +250,7 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
             break;
         }
 
+        printf("Current GameOn = %d", GameOn);
         shapeMovedDown = 0;
         if (currentTime - lastTime > timer) {
             if (moveShapeDown(client_fd, username)) {
