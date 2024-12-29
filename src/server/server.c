@@ -985,6 +985,7 @@ Message handle_update_score(Message *msg, PGconn *conn) {
     // Prepare a response message
     Message response = {0};
     response.type = UPDATE_SCORE;
+    strncpy(response.username, username, MAX_USERNAME);
     snprintf(response.data, BUFFER_SIZE, "%d", score);
 
     // Broadcast the updated score to the room

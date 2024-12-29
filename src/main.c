@@ -221,15 +221,12 @@ void handleServerMessages(int client_fd) {
                 break;
 
             case UPDATE_SCORE:
-                printf("Server: %s\n", response.data);
+                printf("Server: %s-%s\n",response.username, response.data);
                 // Extract the username and score from the message
                 char updateUsername[MAX_USERNAME];
-                int updateScore;
-                if (sscanf(response.data, "%[^|]|%d", updateUsername, &updateScore) == 2) {
-                    printf("Updated score for %s: %d\n", updateUsername, updateScore);
-                    // Update the leaderboard with the new score
-                    updateLeaderboard(leaderboard, LEADERBOARD_SIZE, updateUsername, updateScore);
-                }
+                int updateScore = atoi(response.data);
+                strncpy(updateUsername, response.username, MAX_USERNAME);
+                updateScoreLocal(username, updateUsername, updateScore);
                 break;
 
             default:

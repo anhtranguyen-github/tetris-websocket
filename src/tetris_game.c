@@ -235,14 +235,22 @@ void handleUpdateScore(int client_fd, const char *username, int score) {
     }
 }
 
-void updateScoreLocal(const char *username, int score) {
+void updateScoreLocal(const char *thisname, const char *username, int score) {
     for (int i = 0; i < p_index; i++) {
-        if (compareStringsIgnoreSpaces(leaderboard[i].name, username, sizeof(leaderboard[i].name)) == 0) {
+        //printf("Leaderboard[%d].name: %s\n", i, leaderboard[i].name);
+        if ((compareStringsIgnoreSpaces(leaderboard[i].name, username, sizeof(leaderboard[i].name)) == 0)
+            && (compareStringsIgnoreSpaces(leaderboard[i].name, thisname, sizeof(leaderboard[i].name)) != 0)) {
             // Username found, update the score
-            leaderboard[i].score = score;
+            //printf("Found the player name!\n");
+            if (leaderboard[i].score < score) {
+                //printf("Changed leaderboard for player %s\n", username);
+                leaderboard[i].score = score;
+            }
+            //printf("Didn't change leaderboard because leaderboard:%d and update: %d\n", leaderboard[i].score, score);
             return;
         }
     }
+    //printf("Couldn't find any player like this: %s\n", thisname);
 }
 
 
