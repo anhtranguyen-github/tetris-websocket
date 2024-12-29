@@ -236,6 +236,7 @@ void handleEndGame(int *quit, SDL_Renderer *renderer, TTF_Font *font, Button but
             // On pressing Enter, return to the menu screen
             renderMenu(renderer, font, buttons, 3);
             endGame = 0;
+            joinRoomSuccess = 0;
         }
     }
 }
@@ -265,8 +266,12 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
             Table[i][j] = 0;
         }
     }
+    // Reset the score
+    score = 0;
 
     printf("Starting Tetris game with time limit: %d seconds and brick limit: %d bricks\n", time_limit, brick_limit);
+
+    initLeaderboard();
 
     while (GameOn && !quit) {
         int currentTime = SDL_GetTicks();

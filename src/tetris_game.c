@@ -17,6 +17,7 @@ int score = 0;
 int GameOn = 1;
 int timer = 400;
 int decrease = 1;
+int p_index = 0; // This is the number of players inside leaderboard
 
 char session_id[MAX_SESSION_ID] = "";
 
@@ -46,6 +47,23 @@ void initShapeList() {
     shapeList.count = 0;
     shapeList.current = -1;
 }
+
+void initLeaderboard() {
+    LeaderboardEntry empty[LEADERBOARD_SIZE] = {
+        {"", 0},
+        {"", 0},
+        {"", 0},
+        {"", 0},
+        {"", 0},
+        {"", 0},
+        {"", 0},
+        {"", 0}
+    };
+    for (int i = 0; i < LEADERBOARD_SIZE; i++) {
+        leaderboard[i] = empty[i];
+    }
+}
+
 void generateShapes(int number) {
     for (int i = 0; i < number; i++) {
         int index = rand() % 7;
@@ -173,6 +191,51 @@ void mergeShape() {
     printf("Merged shape at (%d,%d)\n",current.row, current.col);
 }
 
+int compareStringsIgnoreSpaces(const char *str1, const char *str2, size_t n) {
+    // Skip leading spaces for str1
+    while (isspace((unsigned char)*str1)) {
+        str1++;
+    }
+
+    // Skip leading spaces for str2
+    while (isspace((unsigned char)*str2)) {
+        str2++;
+    }
+
+    // Find the end of str1 and trim trailing spaces
+    const char *end1 = str1 + strlen(str1) - 1;
+    while (end1 > str1 && isspace((unsigned char)*end1)) {
+        end1--;
+    }
+
+    // Find the end of str2 and trim trailing spaces
+    const char *end2 = str2 + strlen(str2) - 1;
+    while (end2 > str2 && isspace((unsigned char)*end2)) {
+        end2--;
+    }
+
+    // Calculate the new lengths of the trimmed strings
+    size_t len1 = end1 - str1 + 1;
+    size_t len2 = end2 - str2 + 1;
+
+    // Compare only up to the minimum of n or the trimmed lengths
+    size_t compareLength = n < len1 && n < len2 ? n : len1 < len2 ? len1 : len2;
+
+    return strncmp(str1, str2, compareLength);
+}
+
+void handleUpdateScore(int client_fd, const char *username, int score) {
+    for (int i = 0; i < p_index; i++) {
+        if (compareStringsIgnoreSpaces(leaderboard[i].name, username, sizeof(leaderboard[i].name)) == 0) {
+            // Username found, update the score
+            leaderboard[i].score = score;
+            return;
+        }
+    }
+    update_score(client_fd, username, session_id, score);
+}
+
+
 void clearLines(int client_fd, const char *username, const char *session_id) {
     int cleared = 0;
     for (int i = ROWS - 1; i >= 0; i--) {
@@ -197,8 +260,7 @@ void clearLines(int client_fd, const char *username, const char *session_id) {
         }
     }
     score += cleared * 100;
-    leaderboard[0].score = score;
-    update_score(client_fd, username, session_id, score);
+    handleUpdateScore(client_fd, username, score);
 }
 
 int moveShapeDown(int client_fd, const char *username) {
@@ -304,18 +366,18 @@ void renderLeaderboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomP
     strncpy(playersCopy, roomPlayers, sizeof(playersCopy));
     playersCopy[sizeof(playersCopy) - 1] = '\0';
     char *token = strtok(playersCopy, ",");
-    int index = 0;
+    p_index = 0;
 
     // Populate leaderboard entries
-    while (token != NULL && index < LEADERBOARD_SIZE) {
-        strncpy(leaderboard[index].name, token, sizeof(leaderboard[index].name));
-        leaderboard[index].name[sizeof(leaderboard[index].name) - 1] = '\0';
+    while (token != NULL && p_index < LEADERBOARD_SIZE) {
+        strncpy(leaderboard[p_index].name, token, sizeof(leaderboard[p_index].name));
+        leaderboard[p_index].name[sizeof(leaderboard[p_index].name) - 1] = '\0';
         token = strtok(NULL, ",");
-        index++;
+        p_index++;
     }
 
     // Render leaderboard entries
-    for (int i = 0; i < index; i++) {
+    for (int i = 0; i < p_index; i++) {
         snprintf(buffer, sizeof(buffer), "%d. %s: %d", i + 1, leaderboard[i].name, leaderboard[i].score);
         surface = TTF_RenderText_Solid(font, buffer, white);
         texture = SDL_CreateTextureFromSurface(renderer, surface);
