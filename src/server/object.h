@@ -120,7 +120,8 @@ extern OnlineUser online_users[MAX_USERS];
 int generate_random_game_id();
 int is_user_hosting(const char *username);
 
-RoomInfo *get_room_info(PGconn *conn, int room_id);  
+RoomInfo *get_room_info(PGconn *conn, int room_id); 
+RoomInfo **get_all_room_info(PGconn *conn, int *count);
 int get_brick_limit(RoomInfo *room_info);  
 int get_current_players(RoomInfo *room_info);  
 RoomPlayerList *get_room_players(RoomInfo *room_info);  
@@ -149,6 +150,8 @@ void deserializeLeaderboard(Leaderboard *leaderboard, const char *data);
 void init_online_games();
 int find_empty_game_slot();
 void create_online_game(PGconn *conn, int room_id);
+
+
 char* serializeOnlineGame(const OnlineGame *game); 
 
 //Message
