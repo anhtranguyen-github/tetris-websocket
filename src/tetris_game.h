@@ -62,6 +62,7 @@ void newRandomShape2();
 void mergeShape();
 void clearLines(int client_fd, const char *username, const char *session_id);
 void handleUpdateScore(int client_fd, const char *username, int score);
+void updateScoreLocal(const char *username, int score);
 int moveShapeDown(int client_fd, const char *username);
 void rotateShape();
 void handleEvents(int *quit, int client_fd, const char *username, int *shapeMovedDown);

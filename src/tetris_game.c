@@ -235,6 +235,16 @@ void handleUpdateScore(int client_fd, const char *username, int score) {
     }
 }
 
+void updateScoreLocal(const char *username, int score) {
+    for (int i = 0; i < p_index; i++) {
+        if (compareStringsIgnoreSpaces(leaderboard[i].name, username, sizeof(leaderboard[i].name)) == 0) {
+            // Username found, update the score
+            leaderboard[i].score = score;
+            return;
+        }
+    }
+}
+
 
 void clearLines(int client_fd, const char *username, const char *session_id) {
     int cleared = 0;

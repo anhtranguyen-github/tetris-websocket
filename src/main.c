@@ -220,6 +220,18 @@ void handleServerMessages(int client_fd) {
                 ("Failed to start the game: %s\n", response.data);
                 break;
 
+            case UPDATE_SCORE:
+                printf("Server: %s\n", response.data);
+                // Extract the username and score from the message
+                char updateUsername[MAX_USERNAME];
+                int updateScore;
+                if (sscanf(response.data, "%[^|]|%d", updateUsername, &updateScore) == 2) {
+                    printf("Updated score for %s: %d\n", updateUsername, updateScore);
+                    // Update the leaderboard with the new score
+                    updateLeaderboard(leaderboard, LEADERBOARD_SIZE, updateUsername, updateScore);
+                }
+                break;
+
             default:
                 printf("Unexpected response type: %d\n", response.type);
                 break;
