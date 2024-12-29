@@ -25,6 +25,7 @@ typedef enum {
     ROOM_JOINED,
     GAME_START,
     GAME_STATUS,
+    END_GAME,
     DISCONNECT,
 } MessageType;
 // Message structure

@@ -104,9 +104,34 @@ int update_score(int client_fd, const char *username, const char *session_id, in
     snprintf(msg.data, sizeof(msg.data), "%s|%d", session_id, score);
 
     if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
-        perror("Failed to send start game request");
+        perror("Failed to send update score request");
         return 1;
     }
 
     return 0;
 }
+
+int end_game(int client_fd, const char *username, const char *session_id) {
+    Message msg = {END_GAME, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+    
+    if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
+        perror("Failed to send end game request");
+        return 1;
+    }
+
+    return 0;
+}
+
+int disconnect(int client_fd, const char *username) {
+    Message msg = {DISCONNECT, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+
+    if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
+        perror("Failed to send disconnect request\n");
+        return 1;
+    }
+
+    printf("Successfully send msg to server\n");
+    return 0;
+} 

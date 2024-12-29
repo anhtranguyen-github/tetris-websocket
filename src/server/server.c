@@ -1043,11 +1043,13 @@ void handleClientRequest(int clientSocket, PGconn *conn)
 
         case DISCONNECT:
             strcpy(response.data, "Disconnected from server.");
+            write_to_log("User disconnected");
             response.type = DISCONNECT;
             break;
 
         default:
             strcpy(response.data, "Unknown message type.");
+            write_to_log("Recieved unknown type");
             response.type = -1;
         }
         write_to_log("====================================");

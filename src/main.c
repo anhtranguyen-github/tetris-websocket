@@ -4,12 +4,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
 #include "tetris_game.h"
 #include "protocol/network.h"
 #include "protocol/protocol.h"
 #include "ultis.h"
 #include <pthread.h>
-#include <unistd.h> // Add this line
+#include <unistd.h> 
 
 #define SCREEN_WIDTH  800  // or whatever value you need
 #define SCREEN_HEIGHT 600  // or whatever value you need
@@ -32,7 +33,6 @@ int createRoomSuccess = 0;
 int joinRoomSuccess = 0;
 int selectedField = 0;
 int startGame = 0;
-
 
 
 void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
@@ -63,12 +63,15 @@ ScreenState currentScreen;
 
 
 
-
-
-
-
-
-
+// On clicking Ctr + C in terminal
+void handle_signal(int sig) {
+    printf("\nReceived signal %d, shutting down...\n", sig);
+    handleDisconnect(client_fd, username);
+    if (client_fd > 0) {
+        close(client_fd);
+    }
+    exit(0);
+}
 
 
 void get_shape_list_int(int* shapeList, const Message* message) {
@@ -219,7 +222,7 @@ void* serverMessageThread(void* arg) {
     return NULL;
 }
 
-void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers) {
+void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window, int time_limit, int brick_limit, const char *roomPlayers, int client_fd) {
     //initShapeList();
     //generateShapes(brick_limit);
     convertIntToShapeList(shapeListInt);
@@ -229,6 +232,7 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
     int lastTime = SDL_GetTicks();
     int startTime = lastTime;
     int brickPlaced = 0;
+    int shapeMovedDown = 0;
 
     printf("Starting Tetris game with time limit: %d seconds and brick limit: %d bricks\n", time_limit, brick_limit);
 
@@ -246,34 +250,19 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
             break;
         }
 
+        shapeMovedDown = 0;
         if (currentTime - lastTime > timer) {
-            if (moveShapeDown()) {
+            if (moveShapeDown(client_fd, username)) {
                 brickPlaced++;
                 printf("Brick placed: %d, Current time: %d, Last time: %d\n", brickPlaced, currentTime, lastTime);
             }
             lastTime = currentTime;
+            shapeMovedDown = 1;
         }
-        handleEvents(&quit);
+        handleEvents(&quit, client_fd, username, &shapeMovedDown);
         renderGame(renderer, font, roomPlayers);
     }
 
-    // Cleanup
-    if (renderer) {
-        SDL_DestroyRenderer(renderer);
-        printf("Rendere destroyed.\n");
-    }
-    if (window) {
-        SDL_DestroyWindow(window);
-        printf("Window destroyed.\n");
-
-    }
-    if (font) {
-        TTF_CloseFont(font);
-        printf("Font closed.\n");
-
-    }
-    TTF_Quit();
-    SDL_Quit();
     freeShape(current);
     printf("Shape freed.\n");
 
@@ -284,7 +273,10 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
 
 
 int main() {
-    int client_fd = create_client_socket(server_ip);
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+
+    client_fd = create_client_socket(server_ip);
     if (client_fd < 0) {
         fprintf(stderr, "Client: Failed to connect to server\n");
         exit(EXIT_FAILURE);
@@ -438,9 +430,27 @@ int main() {
                     currentScreen = GAME_SCREEN;
                 }
             } else if (currentScreen == GAME_SCREEN) {
-                startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers);
+                startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers, client_fd);
             }
         }
+        // Cleanup
+        if (renderer) {
+            SDL_DestroyRenderer(renderer);
+            printf("Renderer destroyed.\n");
+        }
+        if (window) {
+            SDL_DestroyWindow(window);
+            printf("Window destroyed.\n");
+
+        }
+        if (font) {
+            TTF_CloseFont(font);
+            printf("Font closed.\n");
+
+        }
+        handleDisconnect(client_fd, username);
+        TTF_Quit();
+        SDL_Quit();
     }
     return 0;
 }

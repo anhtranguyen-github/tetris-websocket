@@ -58,13 +58,12 @@ int checkPosition(Shape shape);
 void newRandomShape();
 void newRandomShape2();
 void mergeShape();
-void clearLines();
-int moveShapeDown();
+void clearLines(int client_fd, const char *username, const char *session_id);
+int moveShapeDown(int client_fd, const char *username);
 void rotateShape();
-void handleEvents(int *quit);
+void handleEvents(int *quit, int client_fd, const char *username, int *shapeMovedDown);
 void renderLeadeerboard(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers);
 void renderGame(SDL_Renderer *renderer, TTF_Font *font, const char *roomPlayers);
-void updatePlayerScore(int newScore);
 void renderButton(SDL_Renderer *renderer, TTF_Font *font, Button button);
 int handleButtonClick(Button button, int x, int y);
 void renderLoginScreen(SDL_Renderer *renderer, TTF_Font *font, const char *username, const char *password, int usernameSelected);
@@ -78,5 +77,6 @@ void renderJoinRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *ro
 void handleJoinRandomRoomEvents(int client_fd, char *username);
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players);
 void handleWaitingRoomEvents(int *quit, int clien_fd, const char *username);
+void handleDisconnect(int client_fd, const char *username);
 
 #endif // TETRIS_GAME_H
