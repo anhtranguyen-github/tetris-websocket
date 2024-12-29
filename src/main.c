@@ -11,6 +11,8 @@
 #include "ultis.h"
 #include <pthread.h>
 #include <unistd.h> 
+#include <stdbool.h>
+
 
 #define SCREEN_WIDTH  800  // or whatever value you need
 #define SCREEN_HEIGHT 600  // or whatever value you need
@@ -145,9 +147,95 @@ int shapeListInt[MAX_SHAPES * 16];
 
 
 
+void show_notification(const char *message) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
+        return;
+    }
 
+    if (TTF_Init() != 0) {
+        fprintf(stderr, "TTF_Init Error: %s\n", TTF_GetError());
+        SDL_Quit();
+        return;
+    }
 
+    SDL_Window *win = SDL_CreateWindow("Notification", 200, 200, 400, 200, SDL_WINDOW_SHOWN);
+    if (win == NULL) {
+        fprintf(stderr, "SDL_CreateWindow Error: %s\n", SDL_GetError());
+        TTF_Quit();
+        SDL_Quit();
+        return;
+    }
 
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (ren == NULL) {
+        SDL_DestroyWindow(win);
+        fprintf(stderr, "SDL_CreateRenderer Error: %s\n", SDL_GetError());
+        TTF_Quit();
+        SDL_Quit();
+        return;
+    }
+
+    TTF_Font *font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24);
+    if (font == NULL) {
+        fprintf(stderr, "TTF_OpenFont Error: %s\n", TTF_GetError());
+        SDL_DestroyRenderer(ren);
+        SDL_DestroyWindow(win);
+        TTF_Quit();
+        SDL_Quit();
+        return;
+    }
+
+    SDL_Color color = {255, 255, 255, 255};
+    SDL_Surface *surf = TTF_RenderText_Blended(font, message, color);
+    SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_FreeSurface(surf);
+
+    SDL_Rect dst;
+    dst.x = 50;
+    dst.y = 50;
+    SDL_QueryTexture(tex, NULL, NULL, &dst.w, &dst.h);
+
+    // Create OK button
+    SDL_Surface *button_surf = TTF_RenderText_Blended(font, "OK", color);
+    SDL_Texture *button_tex = SDL_CreateTextureFromSurface(ren, button_surf);
+    SDL_FreeSurface(button_surf);
+
+    SDL_Rect button_rect;
+    button_rect.x = 150;
+    button_rect.y = 120;
+    SDL_QueryTexture(button_tex, NULL, NULL, &button_rect.w, &button_rect.h);
+
+    bool quit = false;
+    SDL_Event e;
+    while (!quit) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                if (x >= button_rect.x && x <= button_rect.x + button_rect.w &&
+                    y >= button_rect.y && y <= button_rect.y + button_rect.h) {
+                    quit = true;
+                }
+            }
+        }
+
+        SDL_RenderClear(ren);
+        SDL_RenderCopy(ren, tex, NULL, &dst);
+        SDL_RenderCopy(ren, button_tex, NULL, &button_rect);
+        SDL_RenderPresent(ren);
+    }
+
+    SDL_DestroyTexture(button_tex);
+    SDL_DestroyTexture(tex);
+    TTF_CloseFont(font);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    TTF_Quit();
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
+}
 
 void handleServerMessages(int client_fd) {
     Message response;
@@ -161,6 +249,7 @@ void handleServerMessages(int client_fd) {
         switch (response.type) {
             case CREATE_ROOM_SUCCESS:
                 printf("Room created successfully: %s\n", response.data);
+                show_notification(response.data);
                 createRoomSuccess = 1;
                 break;
             case CREATE_ROOM_FAILURE:
