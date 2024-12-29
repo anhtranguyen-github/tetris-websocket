@@ -199,7 +199,7 @@ void handleServerMessages(int client_fd) {
                         if (strlen(currentRoomPlayers) > 0) {
                             strncat(currentRoomPlayers, ",", sizeof(currentRoomPlayers) - strlen(currentRoomPlayers) - 1);
                         }
-                        strncat(currentRoomPlayers, response.data, sizeof(currentRoomPlayers) - strlen(currentRoomPlayers) - 1);
+                        strncat(currentRoomPlayers, playerName, sizeof(currentRoomPlayers) - strlen(currentRoomPlayers) - 1);
                     }
                 }
                 break;               
