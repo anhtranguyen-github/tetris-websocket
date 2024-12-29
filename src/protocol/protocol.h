@@ -27,6 +27,7 @@ typedef enum {
     GAME_STATUS,
     END_GAME,
     DISCONNECT,
+    LOG_OUT
 } MessageType;
 // Message structure
 typedef struct {
