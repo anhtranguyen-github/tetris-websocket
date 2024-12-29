@@ -1050,6 +1050,7 @@ void handleClientRequest(int clientSocket, PGconn *conn)
         default:
             strcpy(response.data, "Unknown message type.");
             write_to_log("Recieved unknown type");
+            write_to_log(response.data);
             response.type = -1;
         }
         write_to_log("====================================");
