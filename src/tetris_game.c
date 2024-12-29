@@ -229,10 +229,10 @@ void handleUpdateScore(int client_fd, const char *username, int score) {
         if (compareStringsIgnoreSpaces(leaderboard[i].name, username, sizeof(leaderboard[i].name)) == 0) {
             // Username found, update the score
             leaderboard[i].score = score;
+            update_score(client_fd, username, session_id, score);
             return;
         }
     }
-    update_score(client_fd, username, session_id, score);
 }
 
 

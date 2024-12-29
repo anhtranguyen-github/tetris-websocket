@@ -108,6 +108,7 @@ int update_score(int client_fd, const char *username, const char *session_id, in
         return 1;
     }
 
+    printf("Sent update score to server\n");
     return 0;
 }
 
