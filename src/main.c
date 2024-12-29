@@ -229,6 +229,10 @@ void handleServerMessages(int client_fd) {
                 updateScoreLocal(username, updateUsername, updateScore);
                 break;
 
+            case GOT_ROOM_LIST:
+                printf("Server: %s\n", response.data);
+                break;    
+
             default:
                 printf("Unexpected response type: %d\n", response.type);
                 break;
@@ -243,6 +247,7 @@ void handleEndGame(int *quit, SDL_Renderer *renderer, TTF_Font *font, Button but
             *quit = 1;
         } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
             // On pressing Enter, return to the menu screen
+            handleGetRoomList(client_fd, username);
             renderMenu(renderer, font, buttons, 3);
             endGame = 0;
             joinRoomSuccess = 0;
@@ -405,6 +410,7 @@ int main() {
             renderLoginScreen(renderer, font, username, password, usernameSelected);
         }
     }
+    handleGetRoomList(client_fd, username);
 
     // In game section
 

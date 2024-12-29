@@ -1038,7 +1038,7 @@ Message handle_room_list(Message *msg, PGconn *conn) {
     }
 
     // Create the response message
-    Message response = {ROOM_LIST};
+    Message response = {GOT_ROOM_LIST};
     strncpy(response.username, msg->username, MAX_USERNAME);
     strncpy(response.data, room_list, BUFFER_SIZE);
 

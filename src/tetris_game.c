@@ -1486,3 +1486,6 @@ void handleDisconnect(int client_fd, const char *username) {
     disconnect(client_fd, username);
 }
 
+void handleGetRoomList(int client_fd, const char *username) {
+    get_room_list(client_fd, username);
+}

@@ -135,6 +135,16 @@ int disconnect(int client_fd, const char *username) {
         return 1;
     }
 
-    printf("Successfully send msg to server\n");
+    printf("Disconnected from server\n");
     return 0;
 } 
+
+int get_room_list(int client_fd, const char *username) {
+    Message msg = {ROOM_LIST, "", "", ""};
+    strncpy(msg.username, username, MAX_USERNAME);
+
+    if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
+        perror("Failed to send get room list request\n");
+        return 1;
+    }
+}

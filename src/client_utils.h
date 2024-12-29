@@ -18,5 +18,6 @@ int register_user(int client_fd, const char *username, const char *password);
 int update_score(int client_fd, const char *username, const char *session_id, int score);
 int end_game(int client_fd, const char *user_name, const char *session_id);
 int disconnect(int client_fd, const char *username);
+int get_room_list(int client_fd, const char *username);
 
 #endif
