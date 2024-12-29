@@ -937,6 +937,62 @@ Message handle_start_game(Message *msg, PGconn *conn)
     return response;
 }
 
+
+
+Message handle_update_score(Message *msg, PGconn *conn) {
+    char session_id[MAX_SESSION_ID] = {0};
+    int score = 0;
+
+    // Extract username
+    const char *username = msg->username;
+
+    // Parse session_id and score from msg->data
+    char *delimiter = strchr(msg->data, '|');
+    if (delimiter == NULL) {
+        // Handle invalid data format
+        fprintf(stderr, "Invalid data format: %s\n", msg->data);
+
+        // Prepare an error response
+        Message response = {0};
+        response.type = UPDATE_SCORE;
+        snprintf(response.data, BUFFER_SIZE, "Error: Invalid data format.");
+        return response;
+    }
+
+    // Copy session_id part
+    size_t session_id_length = delimiter - msg->data;
+    if (session_id_length >= MAX_SESSION_ID) {
+        fprintf(stderr, "Session ID too long.\n");
+
+        // Prepare an error response
+        Message response = {0};
+        response.type = UPDATE_SCORE;
+        snprintf(response.data, BUFFER_SIZE, "Error: Session ID too long.");
+        return response;
+    }
+    strncpy(session_id, msg->data, session_id_length);
+    session_id[session_id_length] = '\0'; // Null-terminate
+
+    // Convert score part to integer
+    score = atoi(delimiter + 1);
+
+    // Log the extracted data
+    printf("Username: %s\n", username);
+    printf("Session ID: %s\n", session_id);
+    printf("Score: %d\n", score);
+
+    // Prepare a response message
+    Message response = {0};
+    response.type = UPDATE_SCORE;
+    snprintf(response.data, BUFFER_SIZE, "%d", score);
+
+    // Broadcast the updated score to the room
+    int room_id = get_room_id_by_username(username);
+    broadcast_message_to_room(room_id, &response);
+
+    return response;
+}
+
 // Periodically clean up expired sessions in the database
 void cleanupExpiredSessions(PGconn *conn)
 {
@@ -1000,6 +1056,11 @@ void handleClientRequest(int clientSocket, PGconn *conn)
         case START_GAME:
             response = handle_start_game(&msg, conn);
             send(clientSocket, &response, sizeof(Message), 0);
+            break;
+
+        case UPDATE_SCORE:
+            response = handle_update_score(&msg, conn);
+            //send(clientSocket, &response, sizeof(Message), 0);
             break;
 
         case DISCONNECT:
