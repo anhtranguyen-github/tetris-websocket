@@ -33,7 +33,7 @@ int createRoomSuccess = 0;
 int joinRoomSuccess = 0;
 int selectedField = 0;
 int startGame = 0;
-
+int endGame = 0;
 
 void renderMenu(SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -216,6 +216,19 @@ void handleServerMessages(int client_fd) {
     }
 }
 
+void handleEndGame(int *quit, SDL_Renderer *renderer, TTF_Font *font, Button buttons[], int buttonCount) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            *quit = 1;
+        } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
+            // On pressing Enter, return to the menu screen
+            renderMenu(renderer, font, buttons, 3);
+            endGame = 0;
+        }
+    }
+}
+
 void* serverMessageThread(void* arg) {
     int client_fd = *((int*)arg);
     handleServerMessages(client_fd);
@@ -241,16 +254,17 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
         //Check time limit
         if ((currentTime - startTime) / 1000 >= time_limit) {
             printf("Time limit reached!\n");
+            GameOn = 0;
             break;
         }
 
         // Check block limit
         if (brickPlaced >= brick_limit) {
             printf("Brick limit reached!\n");
+            GameOn = 0;
             break;
         }
 
-        printf("Current GameOn = %d", GameOn);
         shapeMovedDown = 0;
         if (currentTime - lastTime > timer) {
             if (moveShapeDown(client_fd, username)) {
@@ -270,6 +284,12 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
 
     // Print final score
     printf("Game Over! Final Score: %d\n", score);
+    printf("Press Enter to return to Main Menu");
+
+    // Reset the startGame flag
+    startGame = 0;
+    endGame = 1;
+    currentScreen = MENU_SCREEN;
 }
 
 
@@ -412,7 +432,10 @@ int main() {
                 } 
             }
             if (currentScreen == MENU_SCREEN) {
-                renderMenu(renderer, font, buttons, 3);
+                if (!endGame){
+                    renderMenu(renderer, font, buttons, 3);
+                }
+                else handleEndGame(&quit, renderer, font, buttons, 3);
             } else if (currentScreen == WAITING_ROOM_SCREEN) {
                 write_to_log("Into the wait room...");
                 handleWaitingRoomEvents(&quit, client_fd, username);

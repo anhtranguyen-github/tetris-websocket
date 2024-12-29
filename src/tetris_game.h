@@ -54,6 +54,7 @@ void generateShapes(int number);
 void drawBlock(SDL_Renderer *renderer, int x, int y, SDL_Color color);
 Shape copyShape(const int shapeArray[4][4], int width);
 void freeShape(Shape shape);
+void freeShapeList();
 int checkPosition(Shape shape);
 void newRandomShape();
 void newRandomShape2();
