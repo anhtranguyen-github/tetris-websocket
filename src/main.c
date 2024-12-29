@@ -258,6 +258,14 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
     int brickPlaced = 0;
     int shapeMovedDown = 0;
 
+    
+    // Reset the Table array
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            Table[i][j] = 0;
+        }
+    }
+
     printf("Starting Tetris game with time limit: %d seconds and brick limit: %d bricks\n", time_limit, brick_limit);
 
     while (GameOn && !quit) {
@@ -296,6 +304,13 @@ void startTetrisGame(SDL_Renderer *renderer, TTF_Font *font, SDL_Window *window,
     // Print final score
     printf("Game Over! Final Score: %d\n", score);
     printf("Press Enter to return to Main Menu\n");
+
+     // Reset room variables
+    memset(currentRoomName, 0, sizeof(currentRoomName));
+    currentTimeLimit = 0;
+    currentBrickLimit = 0;
+    memset(currentRoomPlayers, 0, sizeof(currentRoomPlayers));
+
 
     // Reset the startGame flag
     startGame = 0;
@@ -456,8 +471,11 @@ int main() {
                 if (startGame) {
                     currentScreen = GAME_SCREEN;
                 }
-            } else if (currentScreen == GAME_SCREEN) {
+            } else if (currentScreen == GAME_SCREEN && startGame) {
+                GameOn = 1;
                 startTetrisGame(renderer, font, window, currentTimeLimit, currentBrickLimit, currentRoomPlayers, client_fd);
+            } else if (currentScreen == GAME_SCREEN && !startGame) {
+                printf("Waiting for the server to start the game...");
             }
         }
         // Cleanup
