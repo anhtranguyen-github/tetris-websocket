@@ -955,6 +955,7 @@ Message handle_update_score(Message *msg, PGconn *conn) {
         // Prepare an error response
         Message response = {0};
         response.type = UPDATE_SCORE;
+        strncpy(response.username, username, MAX_USERNAME);
         snprintf(response.data, BUFFER_SIZE, "Error: Invalid data format.");
         return response;
     }
