@@ -104,7 +104,7 @@ int update_score(int client_fd, const char *username, const char *session_id, in
     Message msg = {UPDATE_SCORE, "", "", ""};
     strncpy(msg.username, username, MAX_USERNAME);
     snprintf(msg.data, sizeof(msg.data), "%s|%d", session_id, score);
-    write_to_log(msg.data);
+
     if (send(client_fd, &msg, sizeof(Message), 0) < 0) {
         perror("Failed to send update score request");
         return 1;
