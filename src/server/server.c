@@ -995,6 +995,58 @@ Message handle_update_score(Message *msg, PGconn *conn) {
     return response;
 }
 
+
+Message handle_room_list(Message *msg, PGconn *conn) {
+    // Create the query to get all room details
+    const char *query = "SELECT room_id, room_name, host_id, time_limit, brick_limit, max_players FROM rooms;";
+
+    // Execute the query
+    PGresult *res = PQexec(conn, query);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "Error fetching room list: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+
+        // Return a failure message
+        Message response = {ROOM_LIST, "", "", "Failed to retrieve room list."};
+        return response;
+    }
+
+    // Create a buffer to store the formatted room list
+    char room_list[BUFFER_SIZE] = "";
+        // Get the number of rooms
+    int num_rooms = PQntuples(res);
+    
+    // Start with the number of rooms
+    snprintf(room_list, sizeof(room_list), "Number of rooms: %d\n", num_rooms);
+
+    for (int i = 0; i < num_rooms; i++) {
+        int room_id = atoi(PQgetvalue(res, i, 0));
+        const char *room_name = PQgetvalue(res, i, 1);
+        int host_id = atoi(PQgetvalue(res, i, 2));
+        int time_limit = atoi(PQgetvalue(res, i, 3));
+        int brick_limit = atoi(PQgetvalue(res, i, 4));
+        int max_players = atoi(PQgetvalue(res, i, 5));
+
+        // Format the room information into the data buffer
+        char room_info[256];
+        snprintf(room_info, sizeof(room_info),
+                 "Room ID: %d, Room Name: %s, Host ID: %d, Time Limit: %d, Brick Limit: %d, Max Players: %d\n",
+                 room_id, room_name, host_id, time_limit, brick_limit, max_players);
+
+        // Append room info to the room list
+        strncat(room_list, room_info, sizeof(room_list) - strlen(room_list) - 1);
+    }
+
+    // Create the response message
+    Message response = {ROOM_LIST};
+    strncpy(response.username, msg->username, MAX_USERNAME);
+    strncpy(response.data, room_list, BUFFER_SIZE);
+
+    PQclear(res);
+    return response;
+}
+
+
 // Periodically clean up expired sessions in the database
 void cleanupExpiredSessions(PGconn *conn)
 {
@@ -1063,6 +1115,11 @@ void handleClientRequest(int clientSocket, PGconn *conn)
         case UPDATE_SCORE:
             response = handle_update_score(&msg, conn);
             //send(clientSocket, &response, sizeof(Message), 0);
+            break;
+
+        case ROOM_LIST:
+            response = handle_room_list(&msg, conn);
+            send(clientSocket, &response, sizeof(Message), 0);
             break;
 
         case DISCONNECT:
