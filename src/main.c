@@ -232,6 +232,32 @@ void handleServerMessages(int client_fd) {
             case GOT_ROOM_LIST:
                 printf("Server: %s\n", response.data);
                 break;    
+            case DISCONNECT:
+                printf("Player disconnected: %s\n", response.data);
+                // Extract the player's name from the message
+                char disconnectedPlayer[MAX_USERNAME];
+                if (sscanf(response.data, "Player '%31[^']' has disconnected.", disconnectedPlayer) == 1) {
+                    // Remove the player from the room_players string
+                    char newRoomPlayers[ROOM_PLAYER_BUFFER_SIZE] = "";
+                    char *token = strtok(currentRoomPlayers, ",");
+                    while (token != NULL) {
+                        // Trim leading and trailing spaces
+                        while (*token == ' ') token++;
+                        char *end = token + strlen(token) - 1;
+                        while (end > token && *end == ' ') end--;
+                        *(end + 1) = '\0';
+            
+                        if (strcmp(token, disconnectedPlayer) != 0) {
+                            if (strlen(newRoomPlayers) > 0) {
+                                strncat(newRoomPlayers, ",", sizeof(newRoomPlayers) - strlen(newRoomPlayers) - 1);
+                            }
+                            strncat(newRoomPlayers, token, sizeof(newRoomPlayers) - strlen(newRoomPlayers) - 1);
+                        }
+                        token = strtok(NULL, ",");
+                    }
+                    strncpy(currentRoomPlayers, newRoomPlayers, sizeof(currentRoomPlayers));
+                }
+                break;
 
             default:
                 printf("Unexpected response type: %d\n", response.type);
@@ -247,6 +273,7 @@ void handleEndGame(int *quit, SDL_Renderer *renderer, TTF_Font *font, Button but
             *quit = 1;
         } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
             // On pressing Enter, return to the menu screen
+            handleSendEndGame(client_fd, username);
             handleGetRoomList(client_fd, username);
             renderMenu(renderer, font, buttons, 3);
             endGame = 0;

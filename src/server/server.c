@@ -1046,6 +1046,70 @@ Message handle_room_list(Message *msg, PGconn *conn) {
     return response;
 }
 
+Message handle_disconnect(Message *msg, PGconn *conn) {
+    Message response = {0};
+    char query[BUFFER_SIZE];
+    PGresult *result;
+
+    // Extract the username from the message
+    const char *username = msg->username;
+
+    // Get the room ID associated with the user's username
+    int room_id = get_room_id_by_username(username);
+    if (room_id == -1) {
+        snprintf(response.data, BUFFER_SIZE, "User '%s' is not in any room.", username);
+        response.type = DISCONNECT;
+        return response;
+    }
+
+    // Remove the player from the room_players table
+    snprintf(query, BUFFER_SIZE,
+             "DELETE FROM room_players WHERE room_id = %d AND user_id = (SELECT user_id FROM users WHERE username = '%s');",
+             room_id, username);
+    write_to_log("Executing query to remove player from room:");
+    write_to_log(query);
+    result = PQexec(conn, query);
+
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+        write_to_log("Failed to remove player from room.");
+        write_to_log(PQerrorMessage(conn)); // Log the detailed error from PostgreSQL
+
+        response.type = DISCONNECT;
+        snprintf(response.data, BUFFER_SIZE, "Failed to remove user '%s' from the room.", username);
+        PQclear(result);
+        return response;
+    }
+
+    PQclear(result);
+    write_to_log("Player successfully removed from room.");
+
+    // Update the online_users array
+    for (int i = 0; i < MAX_USERS; i++) {
+        OnlineUser *user = &online_users[i];
+        if (user->is_authenticated && strcmp(user->username, username) == 0) {
+            user->room_id = -1; // Set room_id to -1 to indicate the user is not in any room
+            write_to_log("Updated online_users entry to remove room_id:");
+            write_to_log_int(user->room_id);
+            break;
+        }
+    }
+
+    // Construct the success response
+    response.type = DISCONNECT;
+    snprintf(response.data, BUFFER_SIZE, "User '%s' disconnected successfully.", username);
+    strncpy(response.username, username, MAX_USERNAME);
+
+    write_to_log("Response constructed successfully:");
+    write_to_log(response.data);
+
+    // Broadcast the disconnection message to the room
+    Message broadcast_msg = {0};
+    broadcast_msg.type = DISCONNECT;
+    snprintf(broadcast_msg.data, BUFFER_SIZE, "Player '%s' has disconnected.", username);
+    broadcast_message_to_room(room_id, &broadcast_msg);
+
+    return response;
+}
 
 // Periodically clean up expired sessions in the database
 void cleanupExpiredSessions(PGconn *conn)
@@ -1122,10 +1186,12 @@ void handleClientRequest(int clientSocket, PGconn *conn)
             send(clientSocket, &response, sizeof(Message), 0);
             break;
 
+        case END_GAME:
+            write_to_log("Recieved end game");
+            write_to_log(msg.data);
+
         case DISCONNECT:
-            strcpy(response.data, "Disconnected from server.");
-            write_to_log("User disconnected");
-            response.type = DISCONNECT;
+            response = handle_disconnect(&msg, conn);
             break;
 
         default:

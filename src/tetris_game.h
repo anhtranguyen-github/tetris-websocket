@@ -82,6 +82,7 @@ void renderJoinRoomScreen(SDL_Renderer *renderer, TTF_Font *font, const char *ro
 void handleJoinRandomRoomEvents(int client_fd, char *username);
 void renderWaitingRoom(SDL_Renderer *renderer, TTF_Font *font, const char *room_name, int time_limit, int brick_limit, int max_players, const char *room_players);
 void handleWaitingRoomEvents(int *quit, int clien_fd, const char *username);
+void handleSendEndGame(int client_fd, const char *username);
 void handleDisconnect(int client_fd, const char *username);
 void handleGetRoomList(int client_fd, const char *username);
 

@@ -1489,3 +1489,7 @@ void handleDisconnect(int client_fd, const char *username) {
 void handleGetRoomList(int client_fd, const char *username) {
     get_room_list(client_fd, username);
 }
+
+void handleSendEndGame(int client_fd, const char *username) {
+    end_game(client_fd, username, session_id);
+}
