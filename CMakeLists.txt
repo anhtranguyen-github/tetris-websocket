@@ -39,25 +39,6 @@ target_link_libraries(server PRIVATE
     uuid       # UUID generation
 )
 
-# Add the executable for the test client menu
-add_executable(test_client_menu 
-    ${SRC_DIR}/client/test_client_menu.c 
-    ${PROTOCOL_DIR}/protocol.h
-)
-target_include_directories(test_client_menu PRIVATE ${PROTOCOL_DIR})
-target_link_libraries(test_client_menu PRIVATE pthread)
-
-# Add the executable for the Tetris offline game
-add_executable(tetris_offline 
-    ${SRC_DIR}/main.c 
-    ${SRC_DIR}/tetris_game.c
-)
-target_include_directories(tetris_offline PRIVATE ${SRC_DIR} ${INCLUDE_DIR})
-target_link_libraries(tetris_offline PRIVATE pthread SDL2 SDL2_ttf)
-
-# Link ncurses library (if needed)
-target_link_libraries(tetris_offline PRIVATE ncurses)
-
 # Add the executable for the db with PostgreSQL dependencies
 add_executable(db ${DB_DIR}/db.c)
 target_include_directories(db PRIVATE /usr/include/postgresql)
@@ -65,13 +46,10 @@ target_link_libraries(db PRIVATE pq)
 
 # Set output directories for executables
 set_target_properties(server PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set_target_properties(test_client_menu PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set_target_properties(tetris_offline PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set_target_properties(db PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Optional: Add debugging flags for easier development
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(tetris_offline PRIVATE DEBUG)
 endif()
 
 # Add custom compile options or flags if necessary

@@ -32,12 +32,6 @@ make
 echo "Building server..."
 make server
 
-echo "Building test_client_menu..."
-make test_client_menu
-
-echo "Building tetris_offline..."
-make tetris_offline
-
 echo "Build process completed."
 
 cd ..
