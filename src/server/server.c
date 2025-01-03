@@ -85,6 +85,12 @@ void add_online_user(int user_id, const char *username, const char *session_id, 
     }
 
     OnlineUser *user = &online_users[index];
+
+    // Close the old socket file descriptor if it is still open
+    if (user->socket_fd > 0) {
+        close(user->socket_fd);
+    }
+    
     user->user_id = user_id;
     strncpy(user->username, username, sizeof(user->username) - 1);
     strncpy(user->session_id, session_id, sizeof(user->session_id) - 1);
@@ -1087,9 +1093,19 @@ Message handle_disconnect(Message *msg, PGconn *conn) {
     for (int i = 0; i < MAX_USERS; i++) {
         OnlineUser *user = &online_users[i];
         if (user->is_authenticated && strcmp(user->username, username) == 0) {
-            user->room_id = -1; // Set room_id to -1 to indicate the user is not in any room
-            write_to_log("Updated online_users entry to remove room_id:");
-            write_to_log_int(user->room_id);
+            // Close the socket file descriptor
+            close(user->socket_fd);
+
+            // Clear the user's information
+            user->user_id = 0;
+            user->username[0] = '\0';
+            user->session_id[0] = '\0';
+            user->socket_fd = -1;
+            user->room_id = -1;
+            user->is_authenticated = 0;
+            user->is_hosting = 0;
+            write_to_log("Cleared online_users entry for disconnected user:");
+            write_to_log_int(i);
             break;
         }
     }
